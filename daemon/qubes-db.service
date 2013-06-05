@@ -1,0 +1,14 @@
+[Unit]
+Description=Qubes DB agent
+After=local-fs.target
+DefaultDependencies=no
+
+[Service]
+# Remote Dom ID as an argument
+ExecStart=/usr/sbin/qubesdb-daemon 0
+Type=notify
+StandardOutput=syslog
+
+[Install]
+WantedBy=sysinit.target
+
