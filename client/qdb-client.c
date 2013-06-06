@@ -60,6 +60,9 @@ qdb_handle_t qdb_open(char *vmname) {
         perror("connect");
         goto error;
     }
+
+    h->watch_list = NULL;
+
     return h;
 
 error:
