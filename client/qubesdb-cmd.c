@@ -41,7 +41,7 @@ int cmd_read(qdb_handle_t h, int argc, char **args) {
     int anything_failed = 0;
 
     for (i=0; i < argc; i++) {
-        value = qdb_read(h, args[i]);
+        value = qdb_read(h, args[i], NULL);
         if (value) {
             if (opt_fullpath)
                 printf("%s = ", args[i]);
@@ -67,7 +67,7 @@ int cmd_write(qdb_handle_t h, int argc, char **args) {
     }
 
     for (i = 0; i < argc; i += 2) {
-        if (!qdb_write(h, args[i], args[i+1])) {
+        if (!qdb_write(h, args[i], args[i+1], strlen(args[i+1]))) {
             if (!opt_quiet)
                 fprintf(stderr, "Failed to write %s\n", args[i]);
             anything_failed = 1;
@@ -98,7 +98,7 @@ int cmd_list(qdb_handle_t h, int argc, char **args) {
         fprintf(stderr, "LIST command accept only one path\n");
         return 1;
     }
-    paths = qdb_list(h, args[0]);
+    paths = qdb_list(h, args[0], NULL);
     if (!paths) {
         if (!opt_quiet)
             fprintf(stderr, "Failed to get entries list\n");

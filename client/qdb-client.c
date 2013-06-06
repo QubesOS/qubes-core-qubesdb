@@ -120,7 +120,7 @@ int verify_path(char *path) {
     return 1;
 }
 
-char *qdb_read(qdb_handle_t h, char *path) {
+char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
     struct qdb_hdr hdr;
     char *value;
     int got_data, ret;
@@ -161,10 +161,14 @@ char *qdb_read(qdb_handle_t h, char *path) {
         }
         got_data += ret;
     }
+
+    if (value_len)
+        *value_len = got_data;
+
     return value;
 }
 
-char **qdb_list(qdb_handle_t h, char *path) {
+char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
     struct qdb_hdr hdr;
     struct path_list *plist = NULL;
     struct path_list *plist_tmp;
@@ -223,6 +227,9 @@ char **qdb_list(qdb_handle_t h, char *path) {
     /* End of table marker */
     ret[count] = NULL;
 
+    if (list_len)
+        *list_len = count;
+
     /* write responses to array, in reverse order so entries will be back
      * sorted */
     while (plist && count) {
@@ -236,7 +243,7 @@ char **qdb_list(qdb_handle_t h, char *path) {
 
 /** Write single value to QubesDB, will override existing entry.
  */
-int qdb_write(qdb_handle_t h, char *path, char *value) {
+int qdb_write(qdb_handle_t h, char *path, char *value, unsigned int value_len) {
     struct qdb_hdr hdr;
 
     if (!h)
@@ -245,13 +252,13 @@ int qdb_write(qdb_handle_t h, char *path, char *value) {
      * error message */
     if (!verify_path(path))
         return 0;
-    if (!value || strlen(value) > QDB_MAX_DATA)
+    if (!value || value_len > QDB_MAX_DATA)
         return 0;
 
     hdr.type = QDB_CMD_WRITE;
     /* already verified string length */
     strcpy(hdr.path, path);
-    hdr.data_len = strlen(value);
+    hdr.data_len = value_len;
     if (write(h->fd, &hdr, sizeof(hdr)) < sizeof(hdr))
         /* some fatal error perhaps? */
         return 0;

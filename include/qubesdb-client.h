@@ -43,25 +43,28 @@ void qdb_close(qdb_handle_t h);
 /** Read single value from QubesDB
  * @param h Connection handle
  * @param path Path to read
- * @return Key contents or NULL on failure. Value must be freed with free().
+ * @param value_len[out] Size of returned data (optional)
+ * @return Key contents (NULL terminated) or NULL on failure. Value must be freed with free().
  */
-char *qdb_read(qdb_handle_t h, char *path);
+char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len);
 
 /** Get path list matching given prefixB
  * @param h Connection handle
  * @param path Path prefix to match
+ * @param list_len[out] Length of returned list (optional)
  * @return NULL terminated list of NULL terminated strings with list of paths.
  *         Values must be freed with free().
  */
-char **qdb_list(qdb_handle_t h, char *path);
+char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len);
 
 /** Write single value to QubesDB, override existing entry
  * @param h Connection handle
  * @param path Path to write
  * @param value Value to write
+ * @param value_len Size of 'value' param
  * @return 1 on success, 0 on failure
  */
-int qdb_write(qdb_handle_t h, char *path, char *value);
+int qdb_write(qdb_handle_t h, char *path, char *value, unsigned int value_len);
 
 /** Remove value from QubesDB
  * @param h Connection handle
