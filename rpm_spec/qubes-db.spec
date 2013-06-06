@@ -28,6 +28,8 @@
 %define install_dom0_service 1
 %endif
 
+%{!?python_sitearch: %define python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)")}
+
 Name:		qubes-db
 Version:	%{version}
 Release:	1%{?dist}
@@ -85,6 +87,8 @@ make install DESTDIR=%{buildroot} LIBDIR=%{_libdir} BINDIR=%{_bindir} SBINDIR=%{
 
 %files libs
 %{_libdir}/libqubesdb.so
+%{python_sitearch}/QubesDB-*egg-info
+%{python_sitearch}/qubes/qdb.so
 
 %files devel
 /usr/include/qubesdb.h

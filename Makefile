@@ -14,8 +14,10 @@ rpms-vm:
 all:
 	$(MAKE) -C daemon
 	$(MAKE) -C client
+	$(MAKE) -C python
 
 install:
 	$(MAKE) -C daemon install
 	$(MAKE) -C client install
+	$(MAKE) -C python install
 	$(MAKE) -C include install
