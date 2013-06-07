@@ -93,11 +93,16 @@ int cmd_rm(qdb_handle_t h, int argc, char **args) {
 int cmd_list(qdb_handle_t h, int argc, char **args) {
     int i;
     char **paths;
+    int basepath_len;
 
     if (argc != 1) {
         fprintf(stderr, "LIST command accept only one path\n");
         return 1;
     }
+    if (opt_fullpath)
+        basepath_len = 0;
+    else
+        basepath_len = strlen(args[0]);
     paths = qdb_list(h, args[0], NULL);
     if (!paths) {
         if (!opt_quiet)
@@ -106,7 +111,8 @@ int cmd_list(qdb_handle_t h, int argc, char **args) {
     }
     i = 0;
     while (paths[i]) {
-        printf("%s\n", paths[i]);
+        printf("%s\n", paths[i]+basepath_len);
+        free(paths[i]);
         i++;
     }
     return 0;
