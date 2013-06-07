@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <assert.h>
+#include <errno.h>
 
 
 #include <qubesdb.h>
@@ -17,6 +18,7 @@ struct path_list {
 struct qdb_handle {
     /* TODO: OS dependent type */
     int fd;
+    char *vmname;
 
     int during_multiread;
     /* pending watch event received */
@@ -34,16 +36,13 @@ void free_path_list(struct path_list *plist) {
     }
 }
 
-qdb_handle_t qdb_open(char *vmname) {
-    struct qdb_handle *h;
+/* TODO: OS dependent function */
+static int connect_to_daemon(char *vmname) {
     struct sockaddr_un remote;
     int len;
+    int fd;
 
-    h = malloc(sizeof(*h));
-    if (!h)
-        return NULL;
-    
-    if ((h->fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
         perror("socket");
         goto error;
     }
@@ -56,10 +55,80 @@ qdb_handle_t qdb_open(char *vmname) {
     }
 
     len = strlen(remote.sun_path) + sizeof(remote.sun_family);
-    if (connect(h->fd, (struct sockaddr *) &remote, len) == -1) {
+    if (connect(fd, (struct sockaddr *) &remote, len) == -1) {
         perror("connect");
         goto error;
     }
+    return fd;
+
+error:
+    return -1;
+}
+
+/** Send message to daemon. If EPIPE encountered try to reconnect (perhaps
+ * daemon has restarted, or closed connection after previous (invalid)
+ * command).
+ * @param h Connection handle
+ * @param hdr Command header
+ * @param data Command data (required only when hdr->data_len > 0)
+ * @return 1 on success, 0 on failure
+ */
+/* TODO: OS dependent function */
+static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
+        void *data) {
+
+    /* if commands needs additional data, the last parameter must not be NULL
+     */
+    assert(data || hdr->data_len == 0);
+    /* This function writes at most QDB_MAX_DATA bytes (3k) at once,
+     * which is atomic on Linux */
+    if (write(h->fd, hdr, sizeof(*hdr)) < sizeof(*hdr)) {
+        /* some fatal error on previous command (and daemon closed connection)
+         * perhaps? or daemon has restarted */
+        if (errno == EPIPE) {
+            /* try to reconnect */
+            close(h->fd);
+            h->fd = connect_to_daemon(h->vmname);
+            /* FIXME: register watches again */
+            if (h->fd == -1)
+                /* reconnect failed */
+                return 0;
+            else {
+                /* try again */
+                if (write(h->fd, hdr, sizeof(*hdr)) < sizeof(*hdr))
+                    return 0;
+                else
+                    return 1;
+            }
+        } else {
+            /* other write error */
+            perror("write to daemon");
+            return 0;
+        }
+    }
+    if (data && write(h->fd, data, hdr->data_len) < hdr->data_len) {
+        /* no recovery after header send, daemon most likely closed connection
+         * in reaction to our data */
+        return 0;
+    }
+    return 1;
+}
+
+qdb_handle_t qdb_open(char *vmname) {
+    struct qdb_handle *h;
+
+    h = malloc(sizeof(*h));
+    if (!h)
+        return NULL;
+
+    if (vmname)
+        h->vmname = strdup(vmname);
+    else
+        h->vmname = NULL;
+
+    h->fd = connect_to_daemon(vmname);
+    if (h->fd < 0)
+        goto error;
 
     h->watch_list = NULL;
 
@@ -68,6 +137,8 @@ qdb_handle_t qdb_open(char *vmname) {
 error:
     if (h && h->fd > -1)
         close(h->fd);
+    if (h && h->vmname)
+        free(h->vmname);
     if (h)
         free(h);
     return NULL;
@@ -76,6 +147,8 @@ error:
 void qdb_close(qdb_handle_t h) {
     if (!h)
         return;
+    if (h->vmname)
+        free(h->vmname);
     free_path_list(h->watch_list);
     shutdown(h->fd, SHUT_RDWR);
     close(h->fd);
@@ -134,7 +207,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
     /* already verified string length */
     strcpy(hdr.path, path);
     hdr.data_len = 0;
-    if (write(h->fd, &hdr, sizeof(hdr)) < sizeof(hdr))
+    if (!send_command_to_daemon(h, &hdr, NULL))
         /* some fatal error perhaps? */
         return NULL;
     if (!get_response(h, &hdr))
@@ -184,7 +257,7 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
     /* already verified string length */
     strcpy(hdr.path, path);
     hdr.data_len = 0;
-    if (write(h->fd, &hdr, sizeof(hdr)) < sizeof(hdr))
+    if (!send_command_to_daemon(h, &hdr, NULL))
         /* some fatal error perhaps? */
         return NULL;
 
@@ -259,10 +332,7 @@ int qdb_write(qdb_handle_t h, char *path, char *value, unsigned int value_len) {
     /* already verified string length */
     strcpy(hdr.path, path);
     hdr.data_len = value_len;
-    if (write(h->fd, &hdr, sizeof(hdr)) < sizeof(hdr))
-        /* some fatal error perhaps? */
-        return 0;
-    if (write(h->fd, value, hdr.data_len) < hdr.data_len)
+    if (!send_command_to_daemon(h, &hdr, value))
         /* some fatal error perhaps? */
         return 0;
     if (!get_response(h, &hdr))
@@ -296,7 +366,7 @@ static int qdb__simple_cmd(qdb_handle_t h, char *path, int cmd) {
     strcpy(hdr.path, path);
     hdr.data_len = 0;
 
-    if (write(h->fd, &hdr, sizeof(hdr)) < sizeof(hdr))
+    if (!send_command_to_daemon(h, &hdr, NULL))
         /* some fatal error perhaps? */
         return 0;
 
@@ -360,6 +430,3 @@ char *qdb_read_watch(qdb_handle_t h) {
     }
     return ret;
 }
-
-
-
