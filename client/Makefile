@@ -13,6 +13,7 @@ install: all
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-read
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-write
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-rm
+	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-multiread
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-list
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-watch
 

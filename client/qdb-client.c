@@ -318,6 +318,102 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
     return ret;
 }
 
+char **qdb_multiread(qdb_handle_t h, char *path,
+        unsigned int **values_len, unsigned int *list_len) {
+    struct qdb_hdr hdr;
+    int count = 0;
+    char *value;
+    int got_data;
+    char **ret = NULL;
+    int read_ret;
+    unsigned int *len_ret = NULL;
+
+    if (!h)
+        return NULL;
+    if (!verify_path(path))
+        return NULL;
+
+    hdr.type = QDB_CMD_MULTIREAD;
+    /* already verified string length */
+    strcpy(hdr.path, path);
+    hdr.data_len = 0;
+    if (!send_command_to_daemon(h, &hdr, NULL))
+        /* some fatal error perhaps? */
+        return NULL;
+
+    /* receive entries (QDB_RESP_MULTIREAD messages) and add them to plist at the
+     * beginning. This means that list will be in reverse order. */
+    while (1) {
+        if (!get_response(h, &hdr)) {
+            free(ret);
+            free(len_ret);
+            return NULL;
+        }
+        assert(hdr.type == QDB_RESP_MULTIREAD);
+        if (!hdr.path[0])
+            /* end of list */
+            break;
+
+        /* +1 for terminating \0 */
+        value = malloc(hdr.data_len+1);
+        if (!value) {
+            free(ret);
+            free(len_ret);
+            return NULL;
+        }
+        got_data = 0;
+        while (got_data < hdr.data_len) {
+            read_ret = read(h->fd, value+got_data, hdr.data_len-got_data);
+            if (read_ret <= 0) {
+                free(value);
+                free(ret);
+                free(len_ret);
+                return NULL;
+            }
+            got_data += read_ret;
+        }
+        value[got_data] = '\0';
+
+        /* (path+value)*count + NULL,NULL
+         * Note that count is still unchanged */
+        ret = realloc(ret, 2*(count+2)*sizeof(char*));
+        if (!ret) {
+            free(value);
+            free(len_ret);
+            return NULL;
+        }
+
+        if (values_len) {
+            len_ret = realloc(ret, (count+2)*sizeof(unsigned int));
+            if (!len_ret) {
+                free(value);
+                free(ret);
+                return NULL;
+            }
+        }
+
+        /* first path */
+        ret[2*count] = strdup(hdr.path);
+        /* then data */
+        ret[2*count+1] = value;
+        /* and data len if requested */
+        if (values_len)
+            len_ret[count] = hdr.data_len;
+        count++;
+    }
+
+    /* End of table marker */
+    ret[2*count] = NULL;
+    ret[2*count+1] = NULL;
+
+    if (values_len)
+        *values_len = len_ret;
+    if (list_len)
+        *list_len = count;
+
+    return ret;
+}
+
 /** Write single value to QubesDB, will override existing entry.
  */
 int qdb_write(qdb_handle_t h, char *path, char *value, unsigned int value_len) {

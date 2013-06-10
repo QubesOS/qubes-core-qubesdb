@@ -14,6 +14,7 @@ enum {
     DO_READ = 1,
     DO_WRITE,
     DO_RM,
+    DO_MULTIREAD,
     DO_LIST,
     DO_WATCH
 } qdb_cmd;
@@ -51,6 +52,37 @@ int cmd_read(qdb_handle_t h, int argc, char **args) {
             if (!opt_quiet)
                 fprintf(stderr, "Failed to read %s\n", args[i]);
             anything_failed = 1;
+        }
+    }
+
+    return anything_failed;
+}
+
+int cmd_multiread(qdb_handle_t h, int argc, char **args) {
+    int i, j;
+    char **path_value;
+    int anything_failed = 0;
+    int basepath_len;
+
+    for (i=0; i < argc; i++) {
+        if (opt_fullpath)
+            basepath_len = 0;
+        else
+            basepath_len = strlen(args[i]);
+        path_value = qdb_multiread(h, args[i], NULL, NULL);
+        if (!path_value) {
+            if (!opt_quiet)
+                fprintf(stderr, "Failed to read %s\n", args[i]);
+            anything_failed = 1;
+        }
+        j = 0;
+        while (path_value[j]) {
+            printf("%s = ", path_value[j]+basepath_len);
+            encode_and_print_value(path_value[j+1]);
+            printf("\n");
+            free(path_value[j]);
+            free(path_value[j+1]);
+            j += 2;
         }
     }
 
@@ -153,6 +185,8 @@ int parse_cmd(char *cmd_str) {
         return DO_WRITE;
     else if (!strcmp(cmd_str, "rm"))
         return DO_RM;
+    else if (!strcmp(cmd_str, "multiread"))
+        return DO_MULTIREAD;
     else if (!strcmp(cmd_str, "list"))
         return DO_LIST;
     else if (!strcmp(cmd_str, "watch"))
@@ -175,6 +209,7 @@ void usage(char *argv0) {
     fprintf(stderr, "  read path [path...] - read value(s)\n");
     fprintf(stderr, "  write path value [path value...] - write value(s)\n");
     fprintf(stderr, "  rm path [path...] - remove value(s)\n");
+    fprintf(stderr, "  multiread path [path...] - read all entries matching given path\n");
     fprintf(stderr, "  list path - list paths mathing given argument\n");
     fprintf(stderr, "  watch [-n N] path [path...] - watch given path(s) for "
             "modifications\n");
@@ -250,6 +285,9 @@ int main(int argc, char **argv) {
             break;
         case DO_RM:
             ret = cmd_rm(h, argc-optind, argv+optind);
+            break;
+        case DO_MULTIREAD:
+            ret = cmd_multiread(h, argc-optind, argv+optind);
             break;
         case DO_LIST:
             ret = cmd_list(h, argc-optind, argv+optind);

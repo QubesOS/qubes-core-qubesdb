@@ -57,6 +57,18 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len);
  */
 char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len);
 
+/** Get path list matching given prefixB
+ * @param h Connection handle
+ * @param path Path prefix to match
+ * @param values_len[out] List of lengths of returned data (without terminating NULL)
+ * @param list_len[out] Count of returned valued without terminating NULL,NULL (optional)
+ * @return List of paths and data. So list length is 2*list_len and have [path,
+ *         value, path, value, ...]. The whole list is terminated with two NULLs.
+ * All returned data must be freed with free().
+ */
+char **qdb_multiread(qdb_handle_t h, char *path,
+        unsigned int **values_len, unsigned int *list_len);
+
 /** Write single value to QubesDB, override existing entry
  * @param h Connection handle
  * @param path Path to write
