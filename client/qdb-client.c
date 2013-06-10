@@ -222,7 +222,8 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
         return NULL;
     }
     assert(hdr.type == QDB_RESP_READ);
-    value = malloc(hdr.data_len);
+    /* +1 for terminating \0 */
+    value = malloc(hdr.data_len+1);
     if (!value)
         return NULL;
     got_data = 0;
@@ -234,6 +235,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
         }
         got_data += ret;
     }
+    value[got_data] = '\0';
 
     if (value_len)
         *value_len = got_data;
@@ -268,6 +270,8 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
             free_path_list(plist);
             return NULL;
         }
+        /* TODO: QDB_RESP_ERROR ? (current daemon do not send such response to
+         * list */
         assert(hdr.type == QDB_RESP_LIST);
         if (!hdr.path[0])
             /* end of list */

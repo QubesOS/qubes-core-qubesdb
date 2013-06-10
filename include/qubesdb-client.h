@@ -48,7 +48,7 @@ void qdb_close(qdb_handle_t h);
  */
 char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len);
 
-/** Get path list matching given prefixB
+/** Get path list matching given prefix
  * @param h Connection handle
  * @param path Path prefix to match
  * @param list_len[out] Length of returned list (optional)
