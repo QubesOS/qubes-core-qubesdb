@@ -7,6 +7,8 @@
 #include <sys/un.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <signal.h>
+#include <errno.h>
 
 /* For now link with systemd unconditionaly (all Fedora versions are using it,
  * Archlinux also). But if someone needs no systemd in dependencies,
@@ -17,6 +19,12 @@
 
 #include <qubesdb.h>
 #include "qubesdb_internal.h"
+
+int sigterm_received = 0;
+
+void sigterm_handler(int s) {
+    sigterm_received = 1;
+}
 
 /** Register new client
  * @param d Daemon global data
@@ -116,16 +124,37 @@ int mainloop(struct db_daemon_data *d) {
     struct client *client;
     int max_fd;
     int ret;
+    sigset_t sigterm_mask;
+    sigset_t oldmask;
+
+    sigemptyset(&sigterm_mask);
+    sigaddset(&sigterm_mask, SIGTERM);
     
     while (1) {
         max_fd = fill_fdsets_for_select(d, &read_fdset);
 
-        ret = select(max_fd+1, &read_fdset, NULL, NULL, NULL);
+        if (sigprocmask(SIG_BLOCK, &sigterm_mask, &oldmask) < 0) {
+            perror("sigprocmask");
+            break;
+        }
+        if (sigterm_received) {
+            fprintf(stderr, "terminating\n");
+            break;
+        }
+        ret = pselect(max_fd+1, &read_fdset, NULL, NULL, NULL, &oldmask);
         if (ret < 0) {
+            if (errno == EINTR)
+                continue;
+            /* client could have disconnected just before select call, so
+             * ignore this error and retry
+             * FIXME: This probably will loop indefinitelly */
+            if (errno == EBADF)
+                continue;
             perror("select");
             break;
         }
-
+        /* restore signal mask */
+        sigprocmask(SIG_SETMASK, &oldmask, NULL);
 
         if (d->vchan) {
             if (FD_ISSET(libvchan_fd_for_select(d->vchan), &read_fdset))
@@ -197,13 +226,13 @@ int init_server_socket(struct db_daemon_data *d) {
     if (bind(s, (struct sockaddr *) &sockname, sizeof(sockname)) == -1) {
         printf("bind() failed\n");
         close(s);
-        exit(1);
+        return 0;
     }
 //      chmod(sockname.sun_path, 0666);
     if (listen(s, SERVER_SOCKET_BACKLOG) == -1) {
         perror("listen() failed\n");
         close(s);
-        exit(1);
+        return 0;
     }
     d->socket_fd = s;
     umask(old_umask);
@@ -233,6 +262,55 @@ int init_vchan(struct db_daemon_data *d) {
     return 1;
 }
 
+int create_pidfile(struct db_daemon_data *d) {
+    char pidfile_name[256];
+    FILE *pidfile;
+
+    /* do not create pidfile for VM daemon - service is managed by systemd */
+    if (!d->remote_name)
+        return 1;
+    snprintf(pidfile_name, sizeof(pidfile_name),
+            "/var/run/qubes/qubesdb.%s.pid", d->remote_name);
+
+    pidfile = fopen(pidfile_name, "w");
+    if (!pidfile) {
+        perror("pidfile create");
+        return 0;
+    }
+    fprintf(pidfile, "%d\n", getpid());
+    fclose(pidfile);
+    return 1;
+}
+
+void remove_pidfile(struct db_daemon_data *d) {
+    char pidfile_name[256];
+
+    /* no pidfile for VM daemon - service is managed by systemd */
+    if (!d->remote_name)
+        return;
+    snprintf(pidfile_name, sizeof(pidfile_name),
+            "/var/run/qubes/qubesdb.%s.pid", d->remote_name);
+
+    unlink(pidfile_name);
+}
+
+void close_server_socket(struct db_daemon_data *d) {
+    struct sockaddr_un sockname;
+    socklen_t addrlen;
+
+
+    if (d->socket_fd < 0)
+        /* already closed */
+        return ;
+    addrlen = sizeof(sockname);
+    if (getsockname(d->socket_fd, (struct sockaddr *)&sockname, &addrlen) < 0)
+        /* just do not remove socket when cannot get its path */
+        return;
+
+    close(d->socket_fd);
+    unlink(sockname.sun_path);
+}
+
 void usage(char *argv0) {
     fprintf(stderr, "Usage: %s <remote-domid> [<remote-name>]\n", argv0);
     fprintf(stderr, "       Give <remote-name> only in dom0\n");
@@ -242,6 +320,7 @@ int main(int argc, char **argv) {
     struct db_daemon_data d;
     int ready_pipe[2] = {0, 0};
     pid_t pid;
+    int ret;
 
     if (argc != 2 && argc != 3) {
         usage(argv[0]);
@@ -297,6 +376,9 @@ int main(int argc, char **argv) {
         }
     }
 
+    /* setup graceful shutdown handling */
+    signal(SIGTERM, sigterm_handler);
+
     d.db = qubesdb_init();
     if (!d.db) {
         fprintf(stderr, "FATAL: database initialization failed\n");
@@ -338,5 +420,16 @@ int main(int argc, char **argv) {
         close(ready_pipe[1]);
     }
 
-    return !mainloop(&d);
+    create_pidfile(&d);
+
+    ret = !mainloop(&d);
+
+    if (d.vchan)
+        libvchan_close(d.vchan);
+
+    close_server_socket(&d);
+
+    remove_pidfile(&d);
+
+    return ret;
 }
