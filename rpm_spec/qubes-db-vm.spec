@@ -34,6 +34,7 @@ License:	GPL
 URL:		http://www.qubes-os.org/
 
 Requires:	qubes-db
+Requires(post): /bin/systemctl
 
 %define _builddir %(pwd)
 
