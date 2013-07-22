@@ -341,21 +341,21 @@ static PyObject *none(bool result)
 }
 
 
-#define XSPY_METH(_name, _args) {               \
+#define QDBPY_METH(_name, _args) {               \
     .ml_name  = #_name,				\
     .ml_meth  = (PyCFunction) qdbpy_ ## _name,	\
     .ml_flags = _args,                          \
     .ml_doc   = qdbpy_ ## _name ## _doc }
 
 static PyMethodDef qdbhandle_methods[] = {
-    XSPY_METH(read,              METH_VARARGS),
-    XSPY_METH(write,             METH_VARARGS),
-    XSPY_METH(list,              METH_VARARGS),
-    XSPY_METH(rm,                METH_VARARGS),
-    XSPY_METH(watch,             METH_VARARGS),
-    XSPY_METH(read_watch,        METH_NOARGS),
-    XSPY_METH(unwatch,           METH_VARARGS),
-    XSPY_METH(close,             METH_NOARGS),
+    QDBPY_METH(read,              METH_VARARGS),
+    QDBPY_METH(write,             METH_VARARGS),
+    QDBPY_METH(list,              METH_VARARGS),
+    QDBPY_METH(rm,                METH_VARARGS),
+    QDBPY_METH(watch,             METH_VARARGS),
+    QDBPY_METH(read_watch,        METH_NOARGS),
+    QDBPY_METH(unwatch,           METH_VARARGS),
+    QDBPY_METH(close,             METH_NOARGS),
     { NULL /* Sentinel. */ },
 };
 
