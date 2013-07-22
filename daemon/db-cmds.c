@@ -151,6 +151,8 @@ int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
         while (count < data_len) {
             ret = read(fd, data+count, data_len-count);
             if (ret < 0) {
+                if (errno == ECONNRESET)
+                    return 0;
                 perror("client read");
                 return 0;
             }
