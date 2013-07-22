@@ -4,12 +4,24 @@
 
 #include <libvchan.h>
 
+#ifdef WINNT
+typedef HANDLE client_socket_t;
+#define INVALID_CLIENT_SOCKET INVALID_HANDLE_VALUE
+#define CLIENT_SOCKET_FORMAT "%p"
+/* arbitrary numbers */
+#define PIPE_MAX_INSTANCES 16
+#define PIPE_TIMEOUT    5000
+#else
 typedef int client_socket_t;
 #define INVALID_CLIENT_SOCKET -1
+#define CLIENT_SOCKET_FORMAT "%d"
+#endif
 
 #define SERVER_SOCKET_BACKLOG 5
 
 #define QUBESDB_VCHAN_PORT 111
+
+#define MAX_FILE_PATH 256
 
 struct qubesdb_entry {
     struct qubesdb_entry *prev;
@@ -35,6 +47,11 @@ struct qubesdb {
 struct client {
     struct client *next;
     client_socket_t fd;
+#ifdef WINNT
+    int pending_io;
+    OVERLAPPED overlapped_read;
+    char read_buffer[sizeof(struct qdb_hdr)];
+#endif
 };
 
 
@@ -45,9 +62,15 @@ struct db_daemon_data {
     int remote_connected;       /* if remote daemon connected and ready for
                                  * processing requests (i.e. have
                                  * synchronised database */
+#ifdef WINNT
+    char socket_path[MAX_FILE_PATH]; /* socket path - Windows code needs at each connection */
+    HANDLE socket_inst;         /* socket instance prepared for the new client */
+    OVERLAPPED socket_inst_wait; /* pending ConnectToNewClient */
+#else
     int socket_fd;              /* local server socket */
+#endif
     struct qubesdb *db;         /* database */
-    int multiread_requested;    /* have requested multiread, if not drop such
+    int multiread_requested;    /* have requested multiread, if not - drop such
                                    responses */
     struct client *client_list; /* local clients */
 };

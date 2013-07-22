@@ -90,13 +90,22 @@ enum qdb_msg {
     QDB_RESP_WATCH,
 };
 
+#define QDB_MAX_CLIENTS 256
 #define QDB_MAX_DATA 3072
 #define QDB_MAX_PATH 64
 
 /** Socket path for dom0 part of daemon for given VM */
+#ifdef WINNT
+#define QDB_DAEMON_PATH_PATTERN "\\\\.\\pipe\\qubesdb.%s.sock"
+#else
 #define QDB_DAEMON_PATH_PATTERN "/var/run/qubes/qubesdb.%s.sock"
+#endif
 /** Socket path for VM part of daemon */
+#ifdef WINNT
+#define QDB_DAEMON_LOCAL_PATH "\\\\.\\pipe\\qubesdb.sock"
+#else
 #define QDB_DAEMON_LOCAL_PATH "/var/run/qubes/qubesdb.sock"
+#endif
 
 struct qdb_hdr {
     /** Message type as listed in `enum qdb_msg` */

@@ -191,6 +191,10 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
     struct qubesdb_watch *watch;
     struct qdb_hdr hdr;
     int fired_anything = 0;
+#ifdef WINNT
+    OVERLAPPED ov;
+    DWORD written;
+#endif
 
     watch = db->watches;
     while (watch) {
@@ -198,10 +202,20 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
             hdr.type = QDB_RESP_WATCH;
             strncpy(hdr.path, path, sizeof(hdr.path));
             hdr.data_len = 0;
-            /* TODO: OS dependent call */
+#ifdef WINNT
+            memset(&ov, 0, sizeof(ov));
+            if (!WriteFile(watch->client_socket, &hdr, sizeof(hdr), NULL, &ov) &&
+                GetLastError() != ERROR_IO_PENDING) {
+                fprintf(stderr, "Failed to fire watch on %s for client %p\n", path, watch->client_socket);
+            }
+            /* FIXME: leave asynchronous? */
+            GetOverlappedResult(watch->client_socket, &ov, &written, TRUE);
+#else
+
             if (write(watch->client_socket, &hdr, sizeof(hdr)) < 0) {
                 fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client_socket);
             }
+#endif
             fired_anything = 1;
         }
         watch = watch->next;

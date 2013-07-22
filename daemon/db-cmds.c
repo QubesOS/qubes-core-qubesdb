@@ -3,6 +3,9 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#ifdef WINNT
+#include <windows.h>
+#endif
 
 
 #include <libvchan.h>
@@ -121,11 +124,31 @@ int write_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
     } else {
         count = 0;
         while (count < data_len) {
+#ifdef WINNT
+            OVERLAPPED ov;
+            DWORD got_bytes;
+            ov.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+            if (!WriteFile(fd, data, data_len, NULL, &ov)) {
+                if (GetLastError() != ERROR_IO_PENDING) {
+                    perror("client write");
+                    CloseHandle(ov.hEvent);
+                    return 0;
+                }
+            }
+            if (!GetOverlappedResult(fd, &ov, &got_bytes, TRUE)) {
+                perror("client write");
+                CloseHandle(ov.hEvent);
+                return 0;
+            }
+            CloseHandle(ov.hEvent);
+            ret = got_bytes;
+#else
             ret = write(fd, data+count, data_len-count);
             if (ret < 0) {
                 perror("client write");
                 return 0;
             }
+#endif
             count += ret;
         }
         return 1;
@@ -135,6 +158,10 @@ int write_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
 int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
         char *data, int data_len) {
     int ret, count;
+
+    if (data_len == 0)
+        /* nothing to do */
+        return 1;
 
     if (fd == INVALID_CLIENT_SOCKET) {
         /* vchan */
@@ -149,6 +176,25 @@ int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
     } else {
         count = 0;
         while (count < data_len) {
+#ifdef WINNT
+            OVERLAPPED ov;
+            DWORD written_bytes;
+            ov.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
+            if (!ReadFile(fd, data, data_len, NULL, &ov)) {
+                if (GetLastError() != ERROR_IO_PENDING) {
+                    perror("client read");
+                    CloseHandle(ov.hEvent);
+                    return 0;
+                }
+            }
+            if (!GetOverlappedResult(fd, &ov, &written_bytes, TRUE)) {
+                perror("client read");
+                CloseHandle(ov.hEvent);
+                return 0;
+            }
+            CloseHandle(ov.hEvent);
+            ret = written_bytes;
+#else
             ret = read(fd, data+count, data_len-count);
             if (ret < 0) {
                 if (errno == ECONNRESET)
@@ -156,6 +202,10 @@ int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
                 perror("client read");
                 return 0;
             }
+            /* EOF */
+            if (ret == 0)
+                return 0;
+#endif
             count += ret;
         }
         return 1;
@@ -566,20 +616,14 @@ int handle_client_data(struct db_daemon_data *d, client_socket_t client,
         exit(1);
     }
     memcpy(&hdr, data, data_len);
-    /* TODO: OS dependent call */
-    if ((ret=read(client, ((char*)&hdr)+data_len, sizeof(hdr)-data_len)) < 0) {
-        if (errno == ECONNRESET)
-            return 0;
-        perror("read from client");
-        return 0;
-    }
-    if (ret+data_len == 0) {
-        /* EOF */
+    if (!read_vchan_or_client(d, client,
+                    ((char*)&hdr)+data_len, sizeof(hdr)-data_len)) {
         return 0;
     }
 
     if (!verify_hdr(&hdr, 0)) {
-        fprintf(stderr, "invalid message received from client %d\n", client);
+        fprintf(stderr, "invalid message received from client "
+                CLIENT_SOCKET_FORMAT "\n", client);
         /* recovery path */
         return discard_data_and_send_error(d, client, &hdr);
     }
