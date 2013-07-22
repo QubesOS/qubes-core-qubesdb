@@ -11,7 +11,6 @@ qdb = Extension("qdb",
                include_dirs       = [ PATH_INCLUDES ],
                library_dirs       = [ PATH_LIBS ],
                libraries          = [ "qubesdb" ],
-               depends            = [ PATH_LIBS + "/libqubesdb.so" ],
                sources            = [ "qdb.c" ])
 
 setup(name            = 'QubesDB',
