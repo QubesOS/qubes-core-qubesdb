@@ -331,7 +331,7 @@ int handle_read(struct db_daemon_data *d, client_socket_t client,
         hdr->data_len = db_entry->value_len;
         if (!write_vchan_or_client(d, client, (char*)hdr, sizeof(*hdr)))
             return 0;
-        if (!write_vchan_or_client(d, client, 
+        if (!write_vchan_or_client(d, client,
                     db_entry->value, hdr->data_len))
             return 0;
     }
@@ -375,13 +375,13 @@ int handle_multiread(struct db_daemon_data *d, client_socket_t client,
          * on the other side will be more efficient */
         db_entry = d->db->entries->prev;
     }
-    while (db_entry != d->db->entries && 
+    while (db_entry != d->db->entries &&
              strncmp(db_entry->path, search_path, search_path_len) == 0) {
         strncpy(hdr->path, db_entry->path, sizeof(hdr->path));
         hdr->data_len = db_entry->value_len;
         if (!write_vchan_or_client(d, client, (char*)hdr, sizeof(*hdr)))
             return 0;
-        if (!write_vchan_or_client(d, client, 
+        if (!write_vchan_or_client(d, client,
                     db_entry->value, hdr->data_len))
             return 0;
         if (search_path_len)
