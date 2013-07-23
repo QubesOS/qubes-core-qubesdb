@@ -1,8 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#ifdef WINNT
+#include <windows.h>
+#else
 #include <sys/socket.h>
 #include <sys/un.h>
+#endif
 #include <assert.h>
 #include <errno.h>
 
@@ -10,14 +14,28 @@
 #include <qubesdb.h>
 #include <qubesdb-client.h>
 
+#define MAX_FILE_NAME 256
+
+/* type of value returned by read/write functions - on windows
+ * ReadFile/WriteFile expects DWORD as bytes count */
+#ifdef WINNT
+typedef DWORD rw_ret_t;
+#else
+typedef int rw_ret_t;
+#endif
+
 struct path_list {
     struct path_list *next;
     char *path;
 };
 
 struct qdb_handle {
-    /* TODO: OS dependent type */
+#ifdef WINNT
+    HANDLE fd;
+    OVERLAPPED fd_pending_io;
+#else
     int fd;
+#endif
     char *vmname;
 
     int during_multiread;
@@ -36,7 +54,57 @@ void free_path_list(struct path_list *plist) {
     }
 }
 
-/* TODO: OS dependent function */
+#ifdef WINNT
+static HANDLE connect_to_daemon(char *vmname) {
+    char server_socket_path[MAX_FILE_NAME];
+    HANDLE fd;
+    ULONG   uResult;
+
+    if (vmname && strcmp(vmname,"dom0") != 0) {
+        snprintf(server_socket_path, sizeof(server_socket_path),
+                QDB_DAEMON_PATH_PATTERN, vmname);
+    } else {
+        snprintf(server_socket_path, sizeof(server_socket_path),
+                QDB_DAEMON_LOCAL_PATH);
+    }
+
+    // Try to open a named pipe; wait for it, if necessary.
+    while (TRUE) {
+        fd = CreateFile(
+                server_socket_path,
+                GENERIC_READ | GENERIC_WRITE,
+                0,
+                NULL,
+                OPEN_EXISTING,
+                0,
+                NULL);
+
+        // Break if the pipe handle is valid.
+
+        if (fd != INVALID_HANDLE_VALUE)
+            break;
+
+        // Exit if an error other than ERROR_PIPE_BUSY occurs.
+        uResult = GetLastError();
+        if (ERROR_PIPE_BUSY != uResult) {
+            fprintf(stderr, "qubesdb pipe not found, CreateFile(): %lu\n", uResult);
+            return NULL;
+        }
+
+        // All pipe instances are busy, so wait for 10 seconds.
+
+        if (!WaitNamedPipe(server_socket_path, 10000)) {
+            uResult = GetLastError();
+            fprintf(stderr, "qubesdb pipe is busy, WaitNamedPipe(): %lu\n", uResult);
+            return NULL;
+        }
+    }
+
+    return fd;
+}
+
+#else /* !WINNT */
+
 static int connect_to_daemon(char *vmname) {
     struct sockaddr_un remote;
     int len;
@@ -65,6 +133,8 @@ error:
     return -1;
 }
 
+#endif /* !WINNT */
+
 /** Send message to daemon. If EPIPE encountered try to reconnect (perhaps
  * daemon has restarted, or closed connection after previous (invalid)
  * command).
@@ -73,7 +143,50 @@ error:
  * @param data Command data (required only when hdr->data_len > 0)
  * @return 1 on success, 0 on failure
  */
-/* TODO: OS dependent function */
+#ifdef WINNT
+static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
+        void *data) {
+    DWORD bytes_written;
+
+    /* if commands needs additional data, the last parameter must not be NULL
+     */
+    assert(data || hdr->data_len == 0);
+    /* This function writes at most QDB_MAX_DATA bytes (3k) at once,
+     * which is atomic on Linux */
+    if (!WriteFile(h->fd, hdr, sizeof(*hdr), &bytes_written, NULL)) {
+        /* some fatal error on previous command (and daemon closed connection)
+         * perhaps? or daemon has restarted */
+        if (GetLastError() == ERROR_BROKEN_PIPE) {
+            /* try to reconnect */
+            CloseHandle(h->fd);
+            h->fd = connect_to_daemon(h->vmname);
+            /* FIXME: register watches again */
+            if (h->fd == INVALID_HANDLE_VALUE)
+                /* reconnect failed */
+                return 0;
+            else {
+                /* try again */
+                if (!WriteFile(h->fd, hdr, sizeof(*hdr), &bytes_written, NULL))
+                    return 0;
+                else
+                    return 1;
+            }
+        } else {
+            /* other write error */
+            perror("write to daemon");
+            return 0;
+        }
+    }
+    if (data && !WriteFile(h->fd, data, hdr->data_len, &bytes_written, NULL)) {
+        /* no recovery after header send, daemon most likely closed connection
+         * in reaction to our data */
+        return 0;
+    }
+    return 1;
+}
+
+#else /* !WINNT */
+
 static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
         void *data) {
 
@@ -114,6 +227,8 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
     return 1;
 }
 
+#endif /* !WINNT */
+
 qdb_handle_t qdb_open(char *vmname) {
     struct qdb_handle *h;
 
@@ -135,8 +250,13 @@ qdb_handle_t qdb_open(char *vmname) {
     return h;
 
 error:
+#ifdef WINNT
+    if (h && h->fd != INVALID_HANDLE_VALUE)
+        CloseHandle(h->fd);
+#else
     if (h && h->fd > -1)
         close(h->fd);
+#endif
     if (h && h->vmname)
         free(h->vmname);
     if (h)
@@ -150,19 +270,29 @@ void qdb_close(qdb_handle_t h) {
     if (h->vmname)
         free(h->vmname);
     free_path_list(h->watch_list);
+#ifdef WINNT
+    FlushFileBuffers(h->fd);
+    CloseHandle(h->fd);
+#else
     shutdown(h->fd, SHUT_RDWR);
     close(h->fd);
+#endif
     free(h);
 }
 
 /** Can get fired watches before actual response, so handle it in separate
  * function */
 static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
-    int len;
+    rw_ret_t len;
     struct path_list *w;
 
     do {
+#ifdef WINNT
+        if (!ReadFile(h->fd, hdr, sizeof(*hdr), &len, NULL))
+            return 0;
+#else
         len = read(h->fd, hdr, sizeof(*hdr));
+#endif
         if (len <= 0)
             return 0;
         if (len < sizeof(*hdr)) {
@@ -182,7 +312,7 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
     return 1;
 }
 
-int verify_path(char *path) {
+static int verify_path(char *path) {
     if (!path)
         return 0;
     if (path[0] != '/')
@@ -196,7 +326,8 @@ int verify_path(char *path) {
 char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
     struct qdb_hdr hdr;
     char *value;
-    int got_data, ret;
+    int got_data;
+    rw_ret_t ret;
 
     if (!h)
         return NULL;
@@ -212,7 +343,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
         return NULL;
     if (!get_response(h, &hdr))
         return NULL;
-    /* TODO: make this distinguishable from other errorsw */
+    /* TODO: make this distinguishable from other errors */
     if (hdr.type == QDB_RESP_ERROR_NOENT) {
         return NULL;
     }
@@ -228,11 +359,16 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
         return NULL;
     got_data = 0;
     while (got_data < hdr.data_len) {
-        ret = read(h->fd, value+got_data, hdr.data_len-got_data);
-        if (ret <= 0) {
+#ifdef WINNT
+        if (!ReadFile(h->fd, value+got_data, hdr.data_len-got_data,
+                    &ret, NULL)) {
             free(value);
             return NULL;
         }
+#else
+        ret = read(h->fd, value+got_data, hdr.data_len-got_data);
+        if (ret <= 0) {
+#endif
         got_data += ret;
     }
     value[got_data] = '\0';
@@ -325,7 +461,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
     char *value;
     int got_data;
     char **ret = NULL;
-    int read_ret;
+    rw_ret_t read_ret;
     unsigned int *len_ret = NULL;
 
     if (!h)
@@ -363,8 +499,12 @@ char **qdb_multiread(qdb_handle_t h, char *path,
         }
         got_data = 0;
         while (got_data < hdr.data_len) {
+#ifdef WINNT
+            if (!ReadFile(h->fd, value+got_data, hdr.data_len-got_data, &read_ret, NULL)) {
+#else
             read_ret = read(h->fd, value+got_data, hdr.data_len-got_data);
             if (read_ret <= 0) {
+#endif
                 free(value);
                 free(ret);
                 free(len_ret);
@@ -498,8 +638,19 @@ int qdb_rm(qdb_handle_t h, char *path) {
     return qdb__simple_cmd(h, path, QDB_CMD_RM);
 }
 
-int qdb_watch_fd(qdb_handle_t h) {
+#ifdef WINNT
+HANDLE
+#else
+int
+#endif
+qdb_watch_fd(qdb_handle_t h) {
+#ifdef WINNT
+    /* TODO: begin overlapped read operation and return event handle */
+    /* TODO: for overlapped read, pipe should be opened in overlapped mode */
+    return INVALID_HANDLE_VALUE;
+#else
     return h->fd;
+#endif
 }
 
 char *qdb_read_watch(qdb_handle_t h) {
@@ -520,7 +671,11 @@ char *qdb_read_watch(qdb_handle_t h) {
         ret = w->path;
         free(w);
     } else {
+#ifdef WINNT
+        if (!ReadFile(h->fd, &hdr, sizeof(hdr), NULL, NULL)) {
+#else
         if (read(h->fd, &hdr, sizeof(hdr)) < sizeof(hdr)) {
+#endif
             return NULL;
         }
         /* only MULTIREAD is handled with multiple qdb_* calls, so if this

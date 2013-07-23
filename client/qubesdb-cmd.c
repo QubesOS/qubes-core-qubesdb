@@ -32,7 +32,14 @@ void encode_and_print_value(char *val) {
         if (val[i] >= 0x20 && val[i] < 0x80)
             printf("%c", val[i]);
         else
+#ifndef WINNT
             printf("\\x%02hhx", val[i]);
+#else
+            /* windows doesn't support 'h' modifier */
+            printf("\\x%02x", val[i]);
+#endif
+
+
     }
 }
 

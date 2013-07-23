@@ -1,6 +1,10 @@
 #ifndef _QUBESDB_CLIENT_H
 #define _QUBESDB_CLIENT_H
 
+#ifdef WINNT
+#include <windows.h>
+#endif
+
 /** @file qubesdb-client.h
  * This file describes public QubesDB client interface
  *
@@ -16,7 +20,6 @@
  * Value can consists of at most QDB_MAX_DATA (3072) non-null bytes.
  *
  */
-
 
 struct qdb_handle;
 
@@ -113,9 +116,15 @@ char *qdb_read_watch(qdb_handle_t h);
 
 /** Return FD for select().
  * @param h Connection handle
- * @return FD number to use in select() call
+ * @return FD number to use in select() call, on windows it is HANDLE for
+ * event object.
  */
-int qdb_watch_fd(qdb_handle_t h);
+#ifdef WINNT
+HANDLE
+#else
+int
+#endif
+qdb_watch_fd(qdb_handle_t h);
 
 
 #endif /* _QUBESDB_CLIENT_H */
