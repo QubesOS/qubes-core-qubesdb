@@ -1,10 +1,17 @@
 
-CFLAGS += -I../include -I. -g -Wall -Werror -pie -fPIC
+CFLAGS += -I../include -I. -g -Wall -Werror -pie
+
+ifneq ($(OS),Windows_NT)
+CFLAGS += -fPIC
 CFLAGS += `pkg-config --cflags libsystemd-daemon`
 CFLAGS += `pkg-config --cflags vchan-$(BACKEND_VMM)`
-
 LDFLAGS += `pkg-config --libs libsystemd-daemon`
 LDFLAGS += `pkg-config --libs vchan-$(BACKEND_VMM)`
+
+else # Windows_NT
+CFLAGS += -I$(QUBES_INCLUDES)
+LDFLAGS += -L$(QUBES_LIBS) -lvchan-$(BACKEND_VMM)
+endif
 
 SBINDIR = /usr/sbin
 

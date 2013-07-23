@@ -1,9 +1,12 @@
-CFLAGS += -I../include -g -Wall -Werror -pie -fPIC
+CFLAGS += -I../include -g -Wall -Werror -pie
+ifneq ($(OS),Windows_NT)
+CFLAGS += -fPIC
+endif
 
 LIBDIR=/usr/lib64
 BINDIR=/usr/bin
 
-all: libqubesdb.so qubesdb-cmd
+all: libqubesdb qubesdb-cmd
 
 install: all
 	install -d $(DESTDIR)$(LIBDIR)
@@ -17,8 +20,18 @@ install: all
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-list
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-watch
 
+.PHONY: libqubesdb
+ifeq ($(OS),Windows_NT)
+libqubesdb: libqubesdb.dll
+else
+libqubesdb: libqubesdb.so
+endif
+
 libqubesdb.so: qdb-client.o
 	$(CC) $(LDFLAGS) -shared -o $@ $^ $(APPEND_LDFLAGS)
+
+libqubesdb.dll: qdb-client.o
+	$(CC) -shared -o $@ $^ -Wl,--output-def,libqubesdb.def,--out-implib,libqubesdb.dll.a
 
 qubesdb-cmd: qubesdb-cmd.o libqubesdb.so
 	$(CC) $(LDFLAGS) -o $@ $< $(APPEND_LDFLAGS) -L. -lqubesdb
