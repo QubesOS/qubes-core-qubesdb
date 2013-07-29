@@ -8,6 +8,7 @@
 #include <sys/un.h>
 #else
 #include <windows.h>
+#include <sddl.h>
 #include <Lmcons.h>
 #include <tchar.h>
 #endif
@@ -102,6 +103,19 @@ int disconnect_client(struct db_daemon_data *d, client_socket_t c) {
  * @return 1 on success, 0 on failure
  */
 static int prepare_socket_for_new_client(struct db_daemon_data *d) {
+
+    if (!d->socket_sa) {
+        if (!ConvertStringSecurityDescriptorToSecurityDescriptor(
+                    //TEXT("S:(ML;;NW;;;LW)D:(A;;FA;;;SY)(A;;FA;;;CO)"),
+                    TEXT("D:(A;;FA;;;SY)(A;;FA;;;CO)"),
+                    SDDL_REVISION_1,
+                    &d->socket_sa,
+                    NULL)) {
+            perror("ConvertStringSecurityDescriptorToSecurityDescriptor");
+            return 0;
+        }
+    }
+
     d->socket_inst = CreateNamedPipe(
             d->socket_path,
             PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
@@ -110,7 +124,7 @@ static int prepare_socket_for_new_client(struct db_daemon_data *d) {
             4096, // output buffer size
             4096, // input buffer size
             PIPE_TIMEOUT, // client time-out
-            NULL /* &d->socket_sa TODO!!! */);
+            d->socket_sa);
     if (d->socket_inst == INVALID_HANDLE_VALUE) {
         perror("CreateNamedPipe");
         return 0;
@@ -535,6 +549,8 @@ void close_server_socket(struct db_daemon_data *d) {
         /* cancel ConnectNamedPipe */
         CancelIo(d->socket_inst);
         CloseHandle(d->socket_inst);
+        LocalFree(d->socket_sa);
+        d->socket_sa = NULL;
     }
 #endif
 }
