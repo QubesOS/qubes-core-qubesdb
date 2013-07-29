@@ -1,5 +1,6 @@
 
 CFLAGS += -I../include -I. -g -Wall -Werror -pie
+EXEEXT =
 
 ifneq ($(OS),Windows_NT)
 CFLAGS += -fPIC
@@ -9,6 +10,7 @@ LDFLAGS += `pkg-config --libs libsystemd-daemon`
 LDFLAGS += `pkg-config --libs vchan-$(BACKEND_VMM)`
 
 else # Windows_NT
+EXEEXT = .exe
 CFLAGS += -I$(QUBES_INCLUDES)
 CFLAGS += -DUNICODE -D_UNICODE
 LDFLAGS += -L$(QUBES_LIBS) -lvchan-$(BACKEND_VMM)
@@ -17,12 +19,14 @@ CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
 
 SBINDIR = /usr/sbin
 
-all: qubesdb-daemon
+all: qubesdb-daemon$(EXEEXT)
 
 install:
 	install -d $(DESTDIR)$(SBINDIR)
-	install qubesdb-daemon $(DESTDIR)$(SBINDIR)/
+	install qubesdb-daemon$(EXEEXT) $(DESTDIR)$(SBINDIR)/
 
-qubesdb-daemon: db-cmds.o db-daemon.o db-core.o
+qubesdb-daemon$(EXEEXT): db-cmds.o db-daemon.o db-core.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(APPEND_LDFLAGS)
 
+clean:
+	rm -f *.o qubesdb-daemon$(EXEEXT)
