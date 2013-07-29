@@ -103,4 +103,9 @@ int handle_client_disconnect(struct db_daemon_data *d, client_socket_t client);
 
 int request_full_db_sync(struct db_daemon_data *d);
 
+#ifdef WINNT
+#define perror winnt_perror
+void winnt_perror(char *func);
+#endif
+
 #endif /* _QUBESDB_INTERNAL_H */

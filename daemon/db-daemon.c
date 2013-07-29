@@ -35,6 +35,50 @@ void sigterm_handler(int s) {
     sigterm_received = 1;
 }
 
+#ifdef WINNT
+/** Helper function to report errors. Similar to perror, but uses GetLastError() instead of errno
+ * @param prefix Error message prefix
+ */
+void winnt_perror(char *prefix) {
+    size_t  cchErrorTextSize;
+    PUCHAR  pMessage = NULL;
+    char   szMessage[2048];
+    int     ret;
+    ULONG   uErrorCode;
+
+    uErrorCode = GetLastError();
+
+    memset(szMessage, 0, sizeof(szMessage));
+    cchErrorTextSize = FormatMessageA(
+            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+            NULL,
+            uErrorCode,
+            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+            (LPSTR)&pMessage,
+            0,
+            NULL);
+    if (!cchErrorTextSize) {
+        if (!snprintf(szMessage, RTL_NUMBER_OF(szMessage), " failed with error %d\n", uErrorCode))
+            return;
+    } else {
+
+        ret = snprintf(
+                szMessage,
+                RTL_NUMBER_OF(szMessage),
+                " failed with error %d: %s%s",
+                uErrorCode,
+                pMessage,
+                ((cchErrorTextSize >= 1) && (0x0a == pMessage[cchErrorTextSize - 1])) ? "" : "\n");
+        LocalFree(pMessage);
+
+        if (!ret)
+            return;
+    }
+
+    fprintf(stderr, "%s%s", prefix, szMessage);
+}
+#endif
+
 /** Register new client
  * @param d Daemon global data
  * @param c Socket of new client
