@@ -102,7 +102,11 @@ enum qdb_msg {
 #endif
 /** Socket path for VM part of daemon */
 #ifdef WINNT
+#ifdef BACKEND_VMM_WNI
+#define QDB_DAEMON_LOCAL_PATH TEXT("\\\\.\\pipe\\%s\\qubesdb.sock")
+#else
 #define QDB_DAEMON_LOCAL_PATH TEXT("\\\\.\\pipe\\qubesdb.sock")
+#endif
 #else
 #define QDB_DAEMON_LOCAL_PATH "/var/run/qubes/qubesdb.sock"
 #endif

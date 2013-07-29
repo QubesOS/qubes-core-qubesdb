@@ -292,8 +292,22 @@ int init_server_socket(struct db_daemon_data *d) {
         _stprintf_s(d->socket_path, MAX_FILE_PATH,
                 QDB_DAEMON_PATH_PATTERN, d->remote_name);
     } else {
+#ifdef BACKEND_VMM_wni
+        /* on WNI we don't have separate namespace for each VM (all is in the
+         * single system) */
+        DWORD user_name_len = UNLEN + 1;
+        TCHAR user_name[user_name_len];
+
+        if (!GetUserName(user_name, &user_name_len)) {
+            perror("GetUserName");
+            return 0;
+        }
+        _stprintf_s(d->socket_path, MAX_FILE_PATH,
+                QDB_DAEMON_LOCAL_PATH, user_name);
+#else
         _stprintf_s(d->socket_path, MAX_FILE_PATH,
                 QDB_DAEMON_LOCAL_PATH);
+#endif
     }
 
     return prepare_socket_for_new_client(d);

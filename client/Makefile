@@ -4,6 +4,7 @@ CFLAGS += -fPIC
 else
 CFLAGS += -DUNICODE -D_UNICODE
 endif
+CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
 
 LIBDIR=/usr/lib64
 BINDIR=/usr/bin

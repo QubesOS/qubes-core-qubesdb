@@ -66,8 +66,23 @@ static HANDLE connect_to_daemon(char *vmname) {
         _stprintf_s(server_socket_path, sizeof(server_socket_path),
                 QDB_DAEMON_PATH_PATTERN, vmname);
     } else {
+#ifdef BACKEND_VMM_wni
+        /* on WNI we don't have separate namespace for each VM (all is in the
+         * single system) */
+        DWORD user_name_len = UNLEN + 1;
+        TCHAR user_name[user_name_len];
+
+        if (!GetUserName(user_name, &user_name_len)) {
+            perror("GetUserName");
+            return 0;
+        }
+        _stprintf_s(server_socket_path, sizeof(server_socket_path),
+                QDB_DAEMON_LOCAL_PATH, user_name);
+#else
+
         _stprintf_s(server_socket_path, sizeof(server_socket_path),
                 QDB_DAEMON_LOCAL_PATH);
+#endif
     }
 
     // Try to open a named pipe; wait for it, if necessary.
