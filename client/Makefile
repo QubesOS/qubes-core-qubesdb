@@ -1,6 +1,8 @@
 CFLAGS += -I../include -g -Wall -Werror -pie
 ifneq ($(OS),Windows_NT)
 CFLAGS += -fPIC
+else
+CFLAGS += -DUNICODE -D_UNICODE
 endif
 
 LIBDIR=/usr/lib64

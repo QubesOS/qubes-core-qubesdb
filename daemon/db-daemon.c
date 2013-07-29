@@ -8,6 +8,8 @@
 #include <sys/un.h>
 #else
 #include <windows.h>
+#include <Lmcons.h>
+#include <tchar.h>
 #endif
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -287,10 +289,10 @@ int mainloop(struct db_daemon_data *d) {
 int init_server_socket(struct db_daemon_data *d) {
     /* In dom0 listen only on "local" socket */
     if (d->remote_name && d->remote_domid != 0) {
-        snprintf(d->socket_path, MAX_FILE_PATH,
+        _stprintf_s(d->socket_path, MAX_FILE_PATH,
                 QDB_DAEMON_PATH_PATTERN, d->remote_name);
     } else {
-        snprintf(d->socket_path, MAX_FILE_PATH,
+        _stprintf_s(d->socket_path, MAX_FILE_PATH,
                 QDB_DAEMON_LOCAL_PATH);
     }
 

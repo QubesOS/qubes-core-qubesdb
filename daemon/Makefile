@@ -10,6 +10,7 @@ LDFLAGS += `pkg-config --libs vchan-$(BACKEND_VMM)`
 
 else # Windows_NT
 CFLAGS += -I$(QUBES_INCLUDES)
+CFLAGS += -DUNICODE -D_UNICODE
 LDFLAGS += -L$(QUBES_LIBS) -lvchan-$(BACKEND_VMM)
 endif
 

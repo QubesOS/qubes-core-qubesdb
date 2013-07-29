@@ -63,7 +63,7 @@ struct db_daemon_data {
                                  * processing requests (i.e. have
                                  * synchronised database */
 #ifdef WINNT
-    char socket_path[MAX_FILE_PATH]; /* socket path - Windows code needs at each connection */
+    TCHAR socket_path[MAX_FILE_PATH]; /* socket path - Windows code needs at each connection */
     HANDLE socket_inst;         /* socket instance prepared for the new client */
     OVERLAPPED socket_inst_wait; /* pending ConnectToNewClient */
 #else

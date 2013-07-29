@@ -3,6 +3,8 @@
 #include <unistd.h>
 #ifdef WINNT
 #include <windows.h>
+#include <Lmcons.h>
+#include <tchar.h>
 #else
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -56,15 +58,15 @@ void free_path_list(struct path_list *plist) {
 
 #ifdef WINNT
 static HANDLE connect_to_daemon(char *vmname) {
-    char server_socket_path[MAX_FILE_NAME];
+    TCHAR server_socket_path[MAX_FILE_NAME];
     HANDLE fd;
     ULONG   uResult;
 
     if (vmname && strcmp(vmname,"dom0") != 0) {
-        snprintf(server_socket_path, sizeof(server_socket_path),
+        _stprintf_s(server_socket_path, sizeof(server_socket_path),
                 QDB_DAEMON_PATH_PATTERN, vmname);
     } else {
-        snprintf(server_socket_path, sizeof(server_socket_path),
+        _stprintf_s(server_socket_path, sizeof(server_socket_path),
                 QDB_DAEMON_LOCAL_PATH);
     }
 
