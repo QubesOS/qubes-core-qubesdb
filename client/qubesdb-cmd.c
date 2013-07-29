@@ -81,6 +81,7 @@ int cmd_multiread(qdb_handle_t h, int argc, char **args) {
             if (!opt_quiet)
                 fprintf(stderr, "Failed to read %s\n", args[i]);
             anything_failed = 1;
+            continue;
         }
         j = 0;
         while (path_value[j]) {
