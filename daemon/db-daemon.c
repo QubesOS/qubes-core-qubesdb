@@ -26,6 +26,16 @@
 #include <systemd/sd-daemon.h>
 #endif
 
+#ifdef WINNT
+/* on Linux we have systemd or other redirection from startup script, but on
+ * Windows we haven't - so log directly to file.
+ * Service should be started with user profile as working directory, so we can
+ * safely use relative path (especially useful for WNI)
+ */
+#define USE_LOGFILE
+#define LOGFILE_PATH "qubesdb.log"
+#endif
+
 #include <qubesdb.h>
 #include "qubesdb_internal.h"
 
@@ -709,6 +719,12 @@ int main(int argc, char **argv) {
             ready_pipe[1] = atoi(argv[3]);
         }
     }
+#endif
+
+#ifdef USE_LOGFILE
+    /* ignore errors - no place to report them, just leave stderr connected to
+     * the terminal(?) */
+    freopen(LOGFILE_PATH, "a", stderr);
 #endif
 
     d.db = qubesdb_init();
