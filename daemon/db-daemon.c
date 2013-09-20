@@ -606,13 +606,13 @@ void usage(char *argv0) {
 
 int main(int argc, char **argv) {
     struct db_daemon_data d;
-#ifndef WINNT
     int ready_pipe[2] = {0, 0};
+#ifndef WINNT
     pid_t pid;
 #endif
     int ret;
 
-    if (argc != 2 && argc != 3) {
+    if (argc != 2 && argc != 3 && argc != 4) {
         usage(argv[0]);
         exit(1);
     }
@@ -620,7 +620,7 @@ int main(int argc, char **argv) {
     memset(&d, 0, sizeof(d));
 
     d.remote_domid = atoi(argv[1]);
-    if (argc >= 3)
+    if (argc >= 3 && strlen(argv[2]) > 0)
         d.remote_name = argv[2];
     else
         d.remote_name = NULL;
@@ -669,6 +669,46 @@ int main(int argc, char **argv) {
 
     /* setup graceful shutdown handling */
     signal(SIGTERM, sigterm_handler);
+#else /* WINNT */
+    /* start new process in the background and use the pipe to communicate with
+     * it;
+     * do this only in "dom0", VM process is already started as detached/service
+     */
+    if (d.remote_name) {
+        if (argc < 4) {
+            /* parent process */
+            char buf[6];
+            char own_path[256]; // MAX_PATH
+            int own_path_len;
+
+            if (!(own_path_len=GetModuleFileNameA(NULL,
+                            own_path, sizeof(own_path)))) {
+                perror("GetModuleFileName");
+                exit(1);
+            }
+
+            if (_pipe(ready_pipe, 256 /* buffer size */, O_BINARY) == -1) {
+                perror("_pipe");
+                exit(1);
+            }
+
+            snprintf(buf, sizeof(buf), "%d", ready_pipe[1]);
+            if (_spawnl(P_NOWAIT, own_path, "qubesdb-daemon", argv[1],
+                        d.remote_name ? d.remote_name : "",
+                        buf, NULL) < 0) {
+                perror(own_path);
+                exit(1);
+            }
+            close(ready_pipe[1]);
+            if (read(ready_pipe[0], buf, sizeof(buf)) < strlen("ready")) {
+                fprintf(stderr, "startup failed\n");
+                exit(1);
+            }
+            exit(0);
+        } else {
+            ready_pipe[1] = atoi(argv[3]);
+        }
+    }
 #endif
 
     d.db = qubesdb_init();
@@ -714,6 +754,11 @@ int main(int argc, char **argv) {
     }
 
     create_pidfile(&d);
+#else /* WINNT */
+    if (d.remote_name) {
+        write(ready_pipe[1], "ready", strlen("ready"));
+        close(ready_pipe[1]);
+    }
 #endif
 
     ret = !mainloop(&d);
