@@ -105,7 +105,7 @@ static HANDLE connect_to_daemon(char *vmname) {
         uResult = GetLastError();
         if (ERROR_PIPE_BUSY != uResult) {
             fprintf(stderr, "qubesdb pipe not found, CreateFile(): %lu\n", uResult);
-            return NULL;
+            return INVALID_HANDLE_VALUE;
         }
 
         // All pipe instances are busy, so wait for 10 seconds.
@@ -113,7 +113,7 @@ static HANDLE connect_to_daemon(char *vmname) {
         if (!WaitNamedPipe(server_socket_path, 10000)) {
             uResult = GetLastError();
             fprintf(stderr, "qubesdb pipe is busy, WaitNamedPipe(): %lu\n", uResult);
-            return NULL;
+            return INVALID_HANDLE_VALUE;
         }
     }
 
@@ -259,7 +259,11 @@ qdb_handle_t qdb_open(char *vmname) {
         h->vmname = NULL;
 
     h->fd = connect_to_daemon(vmname);
+#ifdef WINNT
+    if (h->fd == INVALID_HANDLE_VALUE)
+#else
     if (h->fd < 0)
+#endif
         goto error;
 
     h->watch_list = NULL;
