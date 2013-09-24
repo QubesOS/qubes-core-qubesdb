@@ -311,12 +311,13 @@ int mainloop(struct db_daemon_data *d) {
                 fprintf(stderr, "vchan closed\n");
                 break;
             }
-            while (libvchan_data_ready(d->vchan)) {
-                if (!handle_vchan_data(d)) {
-                    fprintf(stderr, "FATAL: vchan data processing failed\n");
-                    exit(1);
+            if (d->remote_connected || libvchan_is_open(d->vchan) == 1)
+                while (libvchan_data_ready(d->vchan)) {
+                    if (!handle_vchan_data(d)) {
+                        fprintf(stderr, "FATAL: vchan data processing failed\n");
+                        exit(1);
+                    }
                 }
-            }
         }
 
         /* check if there is some data from a client
@@ -333,6 +334,7 @@ int mainloop(struct db_daemon_data *d) {
                         perror("client read");
                         client_to_remove = client->fd;
                     }
+                    client->pending_io = 0;
                     if (!handle_client_data(d, client->fd, client->read_buffer, got_bytes)) {
                         client_to_remove = client->fd;
                     }
