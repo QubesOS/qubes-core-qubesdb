@@ -96,14 +96,14 @@ enum qdb_msg {
 
 /** Socket path for dom0 part of daemon for given VM */
 #ifdef WINNT
-#define QDB_DAEMON_PATH_PATTERN TEXT("\\\\.\\pipe\\qubesdb.%s.sock")
+#define QDB_DAEMON_PATH_PATTERN TEXT("\\\\.\\pipe\\qubesdb.%hs.sock")
 #else
-#define QDB_DAEMON_PATH_PATTERN "/var/run/qubes/qubesdb.%s.sock"
+#define QDB_DAEMON_PATH_PATTERN "/var/run/qubes/qubesdb.%hs.sock"
 #endif
 /** Socket path for VM part of daemon */
 #ifdef WINNT
-#ifdef BACKEND_VMM_WNI
-#define QDB_DAEMON_LOCAL_PATH TEXT("\\\\.\\pipe\\%s\\qubesdb.sock")
+#ifdef BACKEND_VMM_wni
+#define QDB_DAEMON_LOCAL_PATH TEXT("\\\\.\\pipe\\%hs\\qubesdb.sock")
 #else
 #define QDB_DAEMON_LOCAL_PATH TEXT("\\\\.\\pipe\\qubesdb.sock")
 #endif
