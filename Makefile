@@ -1,4 +1,5 @@
 RPMS_DIR = rpm/
+VERSION = $(shell cat version)
 
 help:
 	@echo "make all                   -- compile all binaries"
@@ -21,3 +22,8 @@ install:
 	$(MAKE) -C client install
 	$(MAKE) -C python install
 	$(MAKE) -C include install
+
+msi:
+	$(MAKE) -C python install PYTHON_PREFIX_ARG=--prefix=. DESTDIR=python27
+	candle -arch x64 -dversion=$(VERSION) installer.wxs
+	light -o core-qubesdb.msm installer.wixobj
