@@ -719,6 +719,7 @@ int main(int argc, char **argv) {
             exit(0);
         } else {
             ready_pipe[1] = atoi(argv[3]);
+            FreeConsole();
         }
     }
 #endif
