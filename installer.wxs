@@ -12,6 +12,11 @@
             InstallerVersion='200'
             Languages='1033'
             SummaryCodepage='1252'/>
+        <Configuration Name="ProductFolder" Format="Key" Type="Identifier" DefaultValue="PFilesQubes"
+            Description="Installation directory" DisplayName="Installation directory"/>
+        <Substitution Table="Directory" Column="Directory_Parent"
+            Row="QubesBin" Value="[=ProductFolder]"/>
+
         <Property Id='PYTHONDIR'>
             <RegistrySearch Id='PythonDirRegistry' Type='raw' Root='HKLM' Key='Software\Python\PythonCore\2.7\InstallPath'/>
         </Property>
