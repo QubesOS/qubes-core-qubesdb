@@ -383,13 +383,13 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
 #ifdef WINNT
         if (!ReadFile(h->fd, value+got_data, hdr.data_len-got_data,
                     &ret, NULL)) {
-            free(value);
-            return NULL;
-        }
 #else
         ret = read(h->fd, value+got_data, hdr.data_len-got_data);
         if (ret <= 0) {
 #endif
+            free(value);
+            return NULL;
+        }
         got_data += ret;
     }
     value[got_data] = '\0';

@@ -98,7 +98,7 @@ enum qdb_msg {
 #ifdef WINNT
 #define QDB_DAEMON_PATH_PATTERN TEXT("\\\\.\\pipe\\qubesdb.%hs.sock")
 #else
-#define QDB_DAEMON_PATH_PATTERN "/var/run/qubes/qubesdb.%hs.sock"
+#define QDB_DAEMON_PATH_PATTERN "/var/run/qubes/qubesdb.%s.sock"
 #endif
 /** Socket path for VM part of daemon */
 #ifdef WINNT
