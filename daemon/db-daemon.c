@@ -668,6 +668,8 @@ int main(int argc, char **argv) {
                 dup2(log_fd, 2);
                 close(log_fd);
 
+                setsid();
+
                 break;
             default:
                 close(ready_pipe[1]);
