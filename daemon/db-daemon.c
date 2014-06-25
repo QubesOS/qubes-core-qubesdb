@@ -138,7 +138,7 @@ int disconnect_client(struct db_daemon_data *d, client_socket_t c) {
     while (client) {
         if (client->fd == c) {
             if (prev_client)
-                prev_client = client->next;
+                prev_client->next = client->next;
             else
                 d->client_list = client->next;
             free(client);
