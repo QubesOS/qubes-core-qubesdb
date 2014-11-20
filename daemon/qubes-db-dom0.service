@@ -1,5 +1,6 @@
 [Unit]
 Description=Qubes DB agent
+After=qubes-core.service
 
 [Service]
 # Both agent and daemon for dom0
