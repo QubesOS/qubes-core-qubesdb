@@ -499,8 +499,21 @@ char **qdb_multiread(qdb_handle_t h, char *path,
         /* some fatal error perhaps? */
         return NULL;
 
-    /* receive entries (QDB_RESP_MULTIREAD messages) and add them to plist at the
-     * beginning. This means that list will be in reverse order. */
+    /* initial arrays */
+    ret = malloc(2*sizeof(char*));
+    if (!ret) {
+        return NULL;
+    }
+
+    if (values_len) {
+        len_ret = malloc(sizeof(unsigned int));
+        if (!len_ret) {
+            free(ret);
+            return NULL;
+        }
+    }
+
+    /* receive entries (QDB_RESP_MULTIREAD messages) */
     while (1) {
         if (!get_response(h, &hdr)) {
             free(ret);
@@ -546,7 +559,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
         }
 
         if (values_len) {
-            len_ret = realloc(ret, (count+2)*sizeof(unsigned int));
+            len_ret = realloc(len_ret, (count+2)*sizeof(unsigned int));
             if (!len_ret) {
                 free(value);
                 free(ret);
