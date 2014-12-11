@@ -179,6 +179,49 @@ static PyObject *qdbpy_list(QdbHandle *self, PyObject *args)
     }
 }
 
+#define qdbpy_multiread_doc "\n"					\
+	"Read all entries matching given path.\n"					\
+	" path [string]:        path prefix to read.\n"                \
+	"\n"							\
+	"Returns: [string dict] dict of entries. Keys are full paths matching given prefix.\n"	\
+	"Raises qubes.qdb.Error on error.\n"			\
+	"\n"
+
+static PyObject *qdbpy_multiread(QdbHandle *self, PyObject *args)
+{
+    qdb_handle_t qdb;
+    char *path;
+
+    char **values;
+    unsigned int list_len;
+    unsigned int *values_len;
+
+    if (!parse_handle_path(self, args, &qdb, &path))
+        return NULL;
+
+    Py_BEGIN_ALLOW_THREADS
+    values = qdb_multiread(qdb, path, &values_len, &list_len);
+    Py_END_ALLOW_THREADS
+
+    if (values) {
+        int i;
+        PyObject *val = PyDict_New();
+        for (i = 0; i < list_len; i++) {
+            PyDict_SetItemString(val,
+                    values[2*i],
+                    PyString_FromStringAndSize(values[2*i+1], values_len[i]));
+            free(values[2*i]);
+            free(values[2*i+1]);
+        }
+        free(values);
+        free(values_len);
+        return val;
+    }
+    else {
+        return none(errno == ENOENT);
+    }
+}
+
 #define qdbpy_rm_doc "\n"                                \
 	"Remove a path.\n"                              \
 	" path [string] : path to remove\n"             \
@@ -349,6 +392,7 @@ static PyObject *none(bool result)
 
 static PyMethodDef qdbhandle_methods[] = {
     QDBPY_METH(read,              METH_VARARGS),
+    QDBPY_METH(multiread,         METH_VARARGS),
     QDBPY_METH(write,             METH_VARARGS),
     QDBPY_METH(list,              METH_VARARGS),
     QDBPY_METH(rm,                METH_VARARGS),
