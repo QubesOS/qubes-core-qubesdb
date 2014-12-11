@@ -366,6 +366,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
         return NULL;
     /* TODO: make this distinguishable from other errors */
     if (hdr.type == QDB_RESP_ERROR_NOENT) {
+        errno = ENOENT;
         return NULL;
     }
     if (hdr.type == QDB_RESP_ERROR) {
