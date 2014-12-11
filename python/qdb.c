@@ -55,15 +55,15 @@ typedef struct QdbHandle {
 
 static void qdb_set_error(int value)
 {
-	errno = value;
-	PyErr_SetFromErrno(qdb_error);
+    errno = value;
+    PyErr_SetFromErrno(qdb_error);
 }
 
 static inline qdb_handle_t qdbhandle(QdbHandle *self)
 {
     qdb_handle_t qdb = self->qdb;
     if (!qdb)
-	qdb_set_error(EINVAL);
+        qdb_set_error(EINVAL);
     return qdb;
 }
 
