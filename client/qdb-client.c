@@ -40,7 +40,6 @@ struct qdb_handle {
 #endif
     char *vmname;
 
-    int during_multiread;
     /* pending watch event received */
     struct path_list *watch_list;
 };
@@ -695,9 +694,6 @@ char *qdb_read_watch(qdb_handle_t h) {
 
     if (!h)
         return 0;
-
-    if (h->during_multiread)
-        return NULL;
 
     /** already received event */
     if (h->watch_list) {
