@@ -324,6 +324,29 @@ static PyObject *qdbpy_unwatch(QdbHandle *self, PyObject *args)
     return none(result);
 }
 
+#define qdbpy_watch_fd_doc "\n"			\
+	"Returns file descriptor to receive watches from Qubes DB.\n"	\
+	"You can monitor this FD with select/poll for reads, then call read_watch()\n" \
+	"\n"					\
+	"Returns FD on success.\n"		\
+	"Raises qubes.qdb.Error on error.\n"	\
+	"\n"
+
+static PyObject *qdbpy_watch_fd(QdbHandle *self)
+{
+    qdb_handle_t qdb = qdbhandle(self);
+    int fd;
+
+    if (!qdb)
+        return NULL;
+
+    fd = qdb_watch_fd(qdb);
+    if (fd == -1) {
+        return none(0);
+    } else
+        return PyInt_FromLong(fd);
+}
+
 #define qdbpy_close_doc "\n"			\
 	"Close the connection to Qubes DB.\n"	\
 	"\n"					\
@@ -402,6 +425,7 @@ static PyMethodDef qdbhandle_methods[] = {
     QDBPY_METH(read_watch,        METH_NOARGS),
     QDBPY_METH(unwatch,           METH_VARARGS),
     QDBPY_METH(close,             METH_NOARGS),
+    QDBPY_METH(watch_fd,          METH_NOARGS),
     { NULL /* Sentinel. */ },
 };
 
