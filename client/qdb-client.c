@@ -39,6 +39,7 @@ struct qdb_handle {
     int fd;
 #endif
     char *vmname;
+    int connected;
 
     /* pending watch event received */
     struct path_list *watch_list;
@@ -140,7 +141,6 @@ static int connect_to_daemon(char *vmname) {
 
     len = strlen(remote.sun_path) + sizeof(remote.sun_family);
     if (connect(fd, (struct sockaddr *) &remote, len) == -1) {
-        perror("connect");
         goto error;
     }
     return fd;
@@ -209,6 +209,17 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
     /* if commands needs additional data, the last parameter must not be NULL
      */
     assert(data || hdr->data_len == 0);
+
+    /* try to reconnect if previous connection was severed */
+    if (!h->connected) {
+        h->fd = connect_to_daemon(h->vmname);
+        if (h->fd == -1) {
+            /* reconnect failed */
+            errno = EPIPE;
+            return 0;
+        }
+        /* FIXME: register watches again */
+    }
     /* This function writes at most QDB_MAX_DATA bytes (3k) at once,
      * which is atomic on Linux */
     if (write(h->fd, hdr, sizeof(*hdr)) < sizeof(*hdr)) {
@@ -219,10 +230,12 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
             close(h->fd);
             h->fd = connect_to_daemon(h->vmname);
             /* FIXME: register watches again */
-            if (h->fd == -1)
+            if (h->fd == -1) {
                 /* reconnect failed */
+                h->connected = 0;
+                errno = EPIPE;
                 return 0;
-            else {
+            } else {
                 /* try again */
                 if (write(h->fd, hdr, sizeof(*hdr)) < sizeof(*hdr))
                     return 0;
@@ -264,6 +277,7 @@ qdb_handle_t qdb_open(char *vmname) {
     if (h->fd < 0)
 #endif
         goto error;
+    h->connected = 1;
 
     h->watch_list = NULL;
 
@@ -290,13 +304,15 @@ void qdb_close(qdb_handle_t h) {
     if (h->vmname)
         free(h->vmname);
     free_path_list(h->watch_list);
+    if (h->connected) {
 #ifdef WINNT
-    FlushFileBuffers(h->fd);
-    CloseHandle(h->fd);
+        FlushFileBuffers(h->fd);
+        CloseHandle(h->fd);
 #else
-    shutdown(h->fd, SHUT_RDWR);
-    close(h->fd);
+        shutdown(h->fd, SHUT_RDWR);
+        close(h->fd);
 #endif
+    }
     free(h);
 }
 
@@ -313,8 +329,14 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
 #else
         len = read(h->fd, hdr, sizeof(*hdr));
 #endif
-        if (len <= 0)
+        if (len <= 0) {
+            if (len == 0) {
+                h->connected = 0;
+                close(h->fd);
+                errno = EPIPE;
+            }
             return 0;
+        }
         if (len < sizeof(*hdr)) {
             /* partial read?! */
             return 0;
@@ -683,6 +705,15 @@ qdb_watch_fd(qdb_handle_t h) {
     /* TODO: for overlapped read, pipe should be opened in overlapped mode */
     return INVALID_HANDLE_VALUE;
 #else
+    if (!h->connected) {
+        h->fd = connect_to_daemon(h->vmname);
+        if (h->fd == -1) {
+            /* reconnect failed */
+            errno = EPIPE;
+            return -1;
+        }
+        /* FIXME: register watches again */
+    }
     return h->fd;
 #endif
 }
@@ -691,6 +722,7 @@ char *qdb_read_watch(qdb_handle_t h) {
     struct qdb_hdr hdr;
     struct path_list *w;
     char *ret = NULL;
+    int len;
 
     if (!h)
         return 0;
@@ -703,10 +735,12 @@ char *qdb_read_watch(qdb_handle_t h) {
         free(w);
     } else {
 #ifdef WINNT
-        if (!ReadFile(h->fd, &hdr, sizeof(hdr), NULL, NULL)) {
+        if (!ReadFile(h->fd, &hdr, sizeof(hdr), &len, NULL)) {
 #else
-        if (read(h->fd, &hdr, sizeof(hdr)) < sizeof(hdr)) {
+        if ((len=read(h->fd, &hdr, sizeof(hdr))) < sizeof(hdr)) {
 #endif
+            if (len==0)
+                errno = EPIPE;
             return NULL;
         }
         /* only MULTIREAD is handled with multiple qdb_* calls, so if this

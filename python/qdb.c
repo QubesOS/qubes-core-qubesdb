@@ -45,6 +45,7 @@
 #define CLS "QubesDB"
 
 static PyObject *qdb_error;
+static PyObject *qdb_disconnected_error;
 
 /** Python wrapper round an Qubes DB handle.
  */
@@ -103,7 +104,6 @@ static PyObject *qdbpy_read(QdbHandle *self, PyObject *args)
         return val;
     }
     else {
-        /* TODO: qdb_read doesn't set errno for now */
         return none(errno == ENOENT);
     }
 }
@@ -292,12 +292,10 @@ static PyObject *qdbpy_read_watch(QdbHandle *self, PyObject *args)
     watch_path = qdb_read_watch(qdb);
     Py_END_ALLOW_THREADS
     if (!watch_path) {
-        PyErr_SetFromErrno(qdb_error);
-        goto exit;
+        return none(0);
     }
-    /* Create tuple (path, token). */
+    /* Create string object. */
     val = PyString_FromString(watch_path);
- exit:
     free(watch_path);
     return val;
 }
@@ -378,7 +376,11 @@ static PyObject *none(bool result)
         return Py_None;
     }
     else {
-        PyErr_SetFromErrno(qdb_error);
+        if (errno == EPIPE) {
+            PyErr_SetString(qdb_disconnected_error, "QubesDB disconnected");
+        } else {
+            PyErr_SetFromErrno(qdb_error);
+        }
         return NULL;
     }
 }
@@ -485,4 +487,14 @@ PyMODINIT_FUNC initqdb(void)
 
     Py_INCREF(qdb_error);
     PyModule_AddObject(m, "Error", qdb_error);
+
+    qdb_disconnected_error = PyErr_NewExceptionWithDoc(
+            PKG ".DisconnectedError",
+            "Raised when connection to QubesDB daemon was broken",
+            PyExc_RuntimeError,
+            NULL
+            );
+    Py_INCREF(qdb_disconnected_error);
+    PyModule_AddObject(m, "DisconnectedError", qdb_disconnected_error);
+
 }
