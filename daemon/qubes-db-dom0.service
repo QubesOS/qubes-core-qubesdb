@@ -1,6 +1,6 @@
 [Unit]
 Description=Qubes DB agent
-After=qubes-core.service
+After=systemd-tmpfiles-setup.service
 
 [Service]
 # Both agent and daemon for dom0
@@ -9,5 +9,4 @@ Type=notify
 StandardOutput=syslog
 
 [Install]
-WantedBy=sysinit.target
-
+WantedBy=multi-user.target
