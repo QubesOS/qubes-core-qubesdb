@@ -10,7 +10,7 @@ Package: qubesdb
 Section: admin
 Architecture: amd64
 #Depends: libvchan, ${shlibs:Depends}, ${misc:Depends}
-Depends: libvchan-xen, libsystemd-daemon, ${shlibs:Depends}, ${misc:Depends}
+Depends: libqubesdb, libvchan-xen, libsystemd-daemon-dev, ${shlibs:Depends}, ${misc:Depends}
 Description: QubesDB management tools and daemon.
 
 Package: qubesdb-vm
@@ -28,5 +28,5 @@ Description: QubesDB libs.
 Package: qubesdb-dev
 Section: libdevel
 Architecture: amd64
-Depends: ${binary:Version}, ${misc:Depends}
+Depends: libqubesdb, ${binary:Version}, ${misc:Depends}
 Description: QubesDB client header files.
