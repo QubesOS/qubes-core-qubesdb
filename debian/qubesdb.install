@@ -1,0 +1,8 @@
+usr/bin/qubesdb-cmd
+usr/bin/qubesdb-read
+usr/bin/qubesdb-write
+usr/bin/qubesdb-rm
+usr/bin/qubesdb-multiread
+usr/bin/qubesdb-list
+usr/bin/qubesdb-watch
+usr/sbin/qubesdb-daemon
