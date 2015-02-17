@@ -1,0 +1,34 @@
+Source: qubesdb
+Section: admin
+Priority: extra
+Maintainer: Jason Mehring <nrgaway@gmail.com>
+Build-Depends: debhelper (>= 9~), dh-python, dh-systemd, python-all (>= 2.6.6-3~), python-setuptools, quilt, libvchan-xen-dev, libsystemd-daemon-dev
+X-Python-Version: 2.7
+Standards-Version: 3.9.5
+Homepage: http://www.qubes-os.org
+
+Package: qubesdb
+Section: admin
+Architecture: amd64
+#Depends: libvchan, ${shlibs:Depends}, ${misc:Depends}
+#Depends: libqubesdb, libvchan-xen, libsystemd-daemon-dev, ${shlibs:Depends}, ${misc:Depends}
+Depends: libqubesdb, libvchan-xen, ${shlibs:Depends}, ${misc:Depends}
+Description: QubesDB management tools and daemon.
+
+Package: qubesdb-vm
+Section: admin
+Architecture: amd64
+Depends: qubesdb, ${misc:Depends}
+Description: QubesDB VM service.
+
+Package: libqubesdb
+Section: libs
+Architecture: amd64
+Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Description: QubesDB libs.
+
+Package: qubesdb-dev
+Section: libdevel
+Architecture: amd64
+Depends: libqubesdb, ${binary:Version}, ${misc:Depends}
+Description: QubesDB client header files.

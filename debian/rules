@@ -1,0 +1,23 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# Disable fortify hardening to prevent build error
+export DEB_BUILD_MAINT_OPTIONS=hardening=-fortify
+include /usr/share/dpkg/default.mk
+
+export DESTDIR=$(shell readlink -m .)/debian/tmp
+
+%:
+	dh $@ --with python2,systemd 
+
+override_dh_auto_build:
+	dh_clean --keep
+	make all
+
+override_dh_auto_install:
+	make install DESTDIR=$(DESTDIR) LIBDIR=/usr/lib BINDIR=/usr/bin SBINDIR=/usr/sbin
+	mkdir -p $(DESTDIR)/lib/systemd/system
+	install -p -m 644 daemon/qubes-db.service $(DESTDIR)/lib/systemd/system
