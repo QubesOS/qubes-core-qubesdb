@@ -495,8 +495,10 @@ int init_server_socket(struct db_daemon_data *d) {
         if (d->remote_domid == 0) {
             /* the same daemon as both VM and Admin parts */
             unlink(QDB_DAEMON_LOCAL_PATH);
-            symlink(socket_address, 
-                    QDB_DAEMON_LOCAL_PATH);
+            if (symlink(socket_address, QDB_DAEMON_LOCAL_PATH) < 0) {
+                perror("symlink " QDB_DAEMON_LOCAL_PATH);
+                return 0;
+            }
         }
     } else {
         snprintf(socket_address, MAX_FILE_PATH,
@@ -771,7 +773,8 @@ int main(int argc, char **argv) {
     if (getenv("NOTIFY_SOCKET")) {
         sd_notify(1, "READY=1");
     } else {
-        write(ready_pipe[1], "ready", strlen("ready"));
+        if (write(ready_pipe[1], "ready", strlen("ready")) != strlen("ready"))
+            perror("failed to notify parent");
         close(ready_pipe[1]);
     }
 
