@@ -416,6 +416,7 @@ int mainloop(struct db_daemon_data *d) {
     int ret;
     sigset_t sigterm_mask;
     sigset_t oldmask;
+    struct timespec ts = { 10, 0 };
 
     sigemptyset(&sigterm_mask);
     sigaddset(&sigterm_mask, SIGTERM);
@@ -431,7 +432,7 @@ int mainloop(struct db_daemon_data *d) {
             fprintf(stderr, "terminating\n");
             break;
         }
-        ret = pselect(max_fd+1, &read_fdset, NULL, NULL, NULL, &oldmask);
+        ret = pselect(max_fd+1, &read_fdset, NULL, NULL, &ts, &oldmask);
         if (ret < 0) {
             if (errno == EINTR)
                 continue;
