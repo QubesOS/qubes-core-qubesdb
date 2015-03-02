@@ -41,6 +41,8 @@
 
 int sigterm_received = 0;
 
+int init_vchan(struct db_daemon_data *d);
+
 void sigterm_handler(int s) {
     sigterm_received = 1;
 }
@@ -309,6 +311,25 @@ int mainloop(struct db_daemon_data *d) {
                 libvchan_wait(d->vchan);
             if (d->remote_connected && !libvchan_is_open(d->vchan)) {
                 fprintf(stderr, "vchan closed\n");
+                if (!d->remote_name) {
+                    /* In the VM, wait for possible qubesdb-daemon dom0 restart.
+                     * This can be a case for DispVM  */
+                    /* FIXME: in such case dom0 daemon will have no entries
+                     * currently present in VM instance; perhaps we should
+                     * clear VM instance? */
+                    if (!init_vchan(d)) {
+                        fprintf(stderr, "vchan reconnection failed\n");
+                        break;
+                    }
+                    /* request database sync from dom0 */
+                    if (!request_full_db_sync(d)) {
+                        fprintf(stderr, "FATAL: failed to request DB sync\n");
+                        exit(1);
+                    }
+                    d->multiread_requested = 1;
+                } else {
+                    break;
+                }
                 break;
             }
             if (d->remote_connected || libvchan_is_open(d->vchan) == 1)
@@ -452,7 +473,25 @@ int mainloop(struct db_daemon_data *d) {
                 libvchan_wait(d->vchan);
             if (d->remote_connected && !libvchan_is_open(d->vchan)) {
                 fprintf(stderr, "vchan closed\n");
-                break;
+                if (!d->remote_name) {
+                    /* In the VM, wait for possible qubesdb-daemon dom0 restart.
+                     * This can be a case for DispVM  */
+                    /* FIXME: in such case dom0 daemon will have no entries
+                     * currently present in VM instance; perhaps we should
+                     * clear VM instance? */
+                    if (!init_vchan(d)) {
+                        fprintf(stderr, "vchan reconnection failed\n");
+                        break;
+                    }
+                    /* request database sync from dom0 */
+                    if (!request_full_db_sync(d)) {
+                        fprintf(stderr, "FATAL: failed to request DB sync\n");
+                        exit(1);
+                    }
+                    d->multiread_requested = 1;
+                } else {
+                    break;
+                }
             }
             while (libvchan_data_ready(d->vchan)) {
                 if (!handle_vchan_data(d)) {
@@ -535,6 +574,10 @@ int init_server_socket(struct db_daemon_data *d) {
 
 int init_vchan(struct db_daemon_data *d) {
 
+    if (d->vchan) {
+        libvchan_close(d->vchan);
+        d->vchan = NULL;
+    }
     if (d->remote_name) {
         /* dom0 part: listen for connection */
         if (d->remote_domid == 0) {
