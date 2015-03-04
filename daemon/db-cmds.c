@@ -525,7 +525,7 @@ int handle_vchan_multiread_resp(struct db_daemon_data *d, struct qdb_hdr *hdr) {
         fprintf(stderr, "failed to insert entry\n");
         return 0;
     }
-    /* do not fire watches on initial data dump */
+    qubesdb_fire_watches(d->db, hdr->path);
     return 1;
 }
 
