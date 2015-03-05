@@ -58,6 +58,7 @@ QubesDB client library.
 %package devel
 Summary:	QubesDB client header files
 Group:		Qubes
+Requires:	qubes-db-libs
 
 %description devel
 Header files for QubesDB client library and daemon protocol.
