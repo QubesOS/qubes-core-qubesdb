@@ -526,7 +526,7 @@ int init_server_socket(struct db_daemon_data *d) {
     char socket_address[MAX_FILE_PATH];
     struct sockaddr_un sockname;
     int s;
-    int old_umask;
+    mode_t old_umask;
 
     if (d->remote_name) {
         snprintf(socket_address, MAX_FILE_PATH,
@@ -694,6 +694,7 @@ int main(int argc, char **argv) {
         char buf[6];
         char log_path[MAX_FILE_PATH];
         int log_fd;
+        mode_t old_umask;
 
         if (pipe(ready_pipe) < 0) {
             perror("pipe");
@@ -708,7 +709,9 @@ int main(int argc, char **argv) {
                 snprintf(log_path, sizeof(log_path), "/var/log/qubes/qubesdb.%s.log", d.remote_name);
 
                 close(0);
-                log_fd = open(log_path, O_WRONLY | O_CREAT, 0644);
+                old_umask = umask(0);
+                log_fd = open(log_path, O_WRONLY | O_CREAT, 0664);
+                umask(old_umask);
                 if (log_fd < 0) {
                     perror("open logfile");
                     exit(1);
