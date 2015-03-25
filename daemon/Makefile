@@ -3,7 +3,7 @@ CFLAGS += -I../include -I. -g -Wall -Werror -pie
 EXEEXT =
 
 ifneq ($(OS),Windows_NT)
-CFLAGS += -fPIC
+CFLAGS += -fPIC -O2
 CFLAGS += `pkg-config --cflags libsystemd-daemon`
 CFLAGS += `pkg-config --cflags vchan-$(BACKEND_VMM)`
 LIBS += `pkg-config --libs libsystemd-daemon`
