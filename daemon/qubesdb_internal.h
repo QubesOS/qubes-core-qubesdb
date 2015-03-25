@@ -23,6 +23,8 @@ typedef int client_socket_t;
 
 #define MAX_FILE_PATH 256
 
+struct client;
+
 struct qubesdb_entry {
     struct qubesdb_entry *prev;
     struct qubesdb_entry *next;
@@ -35,7 +37,7 @@ struct qubesdb_watch {
     struct qubesdb_watch *next;
     char path[QDB_MAX_PATH];
     int cmp_len;
-    client_socket_t client_socket;
+    struct client *client;
 };
 
 
@@ -90,16 +92,16 @@ int qubesdb_write(struct qubesdb *db, char *path, char *data, int data_len);
 int qubesdb_remove(struct qubesdb *db, char *path);
 
 int qubesdb_add_watch(struct qubesdb *db, char *path,
-        client_socket_t client_socket);
+        struct client *client);
 int qubesdb_remove_watch(struct qubesdb *db, char *path,
-        client_socket_t client_socket);
+        struct client *client);
 int qubesdb_fire_watches(struct qubesdb *db, char *path);
 
 int handle_vchan_data(struct db_daemon_data *d);
-int handle_client_data(struct db_daemon_data *d, client_socket_t client,
+int handle_client_data(struct db_daemon_data *d, struct client *client,
                 char *data, int data_len);
-int handle_client_connect(struct db_daemon_data *d, client_socket_t client);
-int handle_client_disconnect(struct db_daemon_data *d, client_socket_t client);
+int handle_client_connect(struct db_daemon_data *d, struct client *client);
+int handle_client_disconnect(struct db_daemon_data *d, struct client *client);
 
 int request_full_db_sync(struct db_daemon_data *d);
 

@@ -138,7 +138,7 @@ int qubesdb_remove(struct qubesdb *db, char *path) {
 }
 
 int qubesdb_add_watch(struct qubesdb *db, char *path,
-        client_socket_t client_socket) {
+        struct client *client) {
     struct qubesdb_watch *new_watch;
 
     new_watch = malloc(sizeof(*new_watch));
@@ -147,7 +147,7 @@ int qubesdb_add_watch(struct qubesdb *db, char *path,
     }
     new_watch->next = db->watches;
     db->watches = new_watch;
-    new_watch->client_socket = client_socket;
+    new_watch->client = client;
     /* path already verified by caller */
     strncpy(new_watch->path, path, QDB_MAX_PATH);
     new_watch->cmp_len = strlen(path) + 1;
@@ -157,14 +157,14 @@ int qubesdb_add_watch(struct qubesdb *db, char *path,
 }
 
 int qubesdb_remove_watch(struct qubesdb *db, char *path,
-        client_socket_t client_socket) {
+        struct client *client) {
     struct qubesdb_watch *watch, *prev_watch, *tmp_watch;
     int anything_removed = 0;
 
     watch = db->watches;
     prev_watch = NULL;
     while (watch) {
-        if (watch->client_socket == client_socket &&
+        if (watch->client == client &&
                 (!path || strcmp(watch->path, path) == 0)) {
             if (prev_watch)
                 prev_watch->next = watch->next;
@@ -204,16 +204,16 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
             hdr.data_len = 0;
 #ifdef WINNT
             memset(&ov, 0, sizeof(ov));
-            if (!WriteFile(watch->client_socket, &hdr, sizeof(hdr), NULL, &ov) &&
+            if (!WriteFile(watch->client->fd, &hdr, sizeof(hdr), NULL, &ov) &&
                 GetLastError() != ERROR_IO_PENDING) {
-                fprintf(stderr, "Failed to fire watch on %s for client %p\n", path, watch->client_socket);
+                fprintf(stderr, "Failed to fire watch on %s for client %p\n", path, watch->client->fd);
             }
             /* FIXME: leave asynchronous? */
             GetOverlappedResult(watch->client_socket, &ov, &written, TRUE);
 #else
 
-            if (write(watch->client_socket, &hdr, sizeof(hdr)) < 0) {
-                fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client_socket);
+            if (write(watch->client->fd, &hdr, sizeof(hdr)) < 0) {
+                fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client->fd);
             }
 #endif
             fired_anything = 1;

@@ -105,13 +105,13 @@ int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
 }
 
 /* write to either client given by fd parameter or vchan if 
- * fd == INVALID_CLIENT_SOCKET
+ * fd == NULL
  */
-int write_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
+int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
     int ret, count;
 
-    if (fd == INVALID_CLIENT_SOCKET) {
+    if (c == NULL) {
         /* vchan */
         if (!d->vchan)
             /* if vchan not connected, just do nothing */
@@ -128,14 +128,14 @@ int write_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
             OVERLAPPED ov;
             DWORD got_bytes;
             ov.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-            if (!WriteFile(fd, data, data_len, NULL, &ov)) {
+            if (!WriteFile(c->fd, data, data_len, NULL, &ov)) {
                 if (GetLastError() != ERROR_IO_PENDING) {
                     perror("client write");
                     CloseHandle(ov.hEvent);
                     return 0;
                 }
             }
-            if (!GetOverlappedResult(fd, &ov, &got_bytes, TRUE)) {
+            if (!GetOverlappedResult(c->fd, &ov, &got_bytes, TRUE)) {
                 perror("client write");
                 CloseHandle(ov.hEvent);
                 return 0;
@@ -143,7 +143,7 @@ int write_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
             CloseHandle(ov.hEvent);
             ret = got_bytes;
 #else
-            ret = write(fd, data+count, data_len-count);
+            ret = write(c->fd, data+count, data_len-count);
             if (ret < 0) {
                 perror("client write");
                 return 0;
@@ -155,7 +155,7 @@ int write_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
     }
 }
 
-int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
+int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
     int ret, count;
 
@@ -163,7 +163,7 @@ int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
         /* nothing to do */
         return 1;
 
-    if (fd == INVALID_CLIENT_SOCKET) {
+    if (c == NULL) {
         /* vchan */
         if (!d->vchan)
             /* if vchan not connected, return error */
@@ -180,14 +180,14 @@ int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
             OVERLAPPED ov;
             DWORD written_bytes;
             ov.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-            if (!ReadFile(fd, data, data_len, NULL, &ov)) {
+            if (!ReadFile(c->fd, data, data_len, NULL, &ov)) {
                 if (GetLastError() != ERROR_IO_PENDING) {
                     perror("client read");
                     CloseHandle(ov.hEvent);
                     return 0;
                 }
             }
-            if (!GetOverlappedResult(fd, &ov, &written_bytes, TRUE)) {
+            if (!GetOverlappedResult(c->fd, &ov, &written_bytes, TRUE)) {
                 perror("client read");
                 CloseHandle(ov.hEvent);
                 return 0;
@@ -195,7 +195,7 @@ int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
             CloseHandle(ov.hEvent);
             ret = written_bytes;
 #else
-            ret = read(fd, data+count, data_len-count);
+            ret = read(c->fd, data+count, data_len-count);
             if (ret < 0) {
                 if (errno == ECONNRESET)
                     return 0;
@@ -214,11 +214,11 @@ int read_vchan_or_client(struct db_daemon_data *d, client_socket_t fd,
 
 /** Discard specified amount of data on given communication channel
  * @param d Daemon global data
- * @param fd From which client discard data. INVALID_CLIENT_SOCKET means vchan.
+ * @param fd From which client discard data. NULL means vchan.
  * @param amount Size of data to discard in bytes.
  * @return 1 on success, 0 on failure
- */
-int discard_data(struct db_daemon_data *d, client_socket_t client, int amount) {
+     */
+int discard_data(struct db_daemon_data *d, struct client *client, int amount) {
     char buf[256];
     int data_to_read;
 
@@ -234,13 +234,13 @@ int discard_data(struct db_daemon_data *d, client_socket_t client, int amount) {
 /** Discard 'data' part of message and send QDB_RESP_ERROR. To be used when
  * invalid header detected.
  * @param d Daemon global data
- * @param client Client connection (INVALID_CLIENT_SOCKET means vchan)
+ * @param client Client connection (NULL means vchan)
  * @param hdr Original header received from client. hdr->data_len bytes will be
  * discarded. WARNING: This struct will be modified to send response.
  * @return 1 on success, 0 on failure (recovery failed and client should be
  * disconnected).
  */
-int discard_data_and_send_error(struct db_daemon_data *d, client_socket_t client,
+int discard_data_and_send_error(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
 
     if (discard_data(d, client, hdr->data_len)) {
@@ -258,14 +258,14 @@ int discard_data_and_send_error(struct db_daemon_data *d, client_socket_t client
  * This command is valid on both client socket and vchan, so input data must be
  * handled with special care.
  * @param d Daemon global data
- * @param client Client connection (INVALID_CLIENT_SOCKET means vchan)
+ * @param client Client connection (NULL means vchan)
  * @param hdr Original header received from client.
  *        WARNING: This struct will be modified to send response.
  * @return 1 on success (message handled and responded, even if response is
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_write(struct db_daemon_data *d, client_socket_t client,
+int handle_write(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     char untrusted_data[QDB_MAX_DATA];
     char *data;
@@ -289,11 +289,11 @@ int handle_write(struct db_daemon_data *d, client_socket_t client,
         write_vchan_or_client(d, client, (char*)hdr, sizeof(*hdr));
         return 0;
     } else {
-        if (client != INVALID_CLIENT_SOCKET && d->remote_connected) {
+        if (client != NULL && d->remote_connected) {
             /* if write was from local client, duplicate it through vchan */
-            write_vchan_or_client(d, INVALID_CLIENT_SOCKET,
+            write_vchan_or_client(d, NULL,
                     (char*)hdr, sizeof(*hdr));
-            write_vchan_or_client(d, INVALID_CLIENT_SOCKET,
+            write_vchan_or_client(d, NULL,
                     data, hdr->data_len);
         }
         hdr->type = QDB_RESP_OK;
@@ -311,7 +311,7 @@ int handle_write(struct db_daemon_data *d, client_socket_t client,
  * This command is valid on both client socket and vchan, so input data must be
  * handled with special care.
  * @param d Daemon global data
- * @param client Client connection (INVALID_CLIENT_SOCKET means vchan)
+ * @param client Client connection (NULL means vchan)
  * @param hdr Original header received from client.
  *        WARNING: This struct will be modified to send response.
  * @return 1 on success (message handled and responded, even if response is
@@ -319,7 +319,7 @@ int handle_write(struct db_daemon_data *d, client_socket_t client,
  *           disconnected.
  */
 /* this command is valid on both client socket and vchan */
-int handle_rm(struct db_daemon_data *d, client_socket_t client,
+int handle_rm(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
 
     if (hdr->data_len > 0) {
@@ -335,12 +335,12 @@ int handle_rm(struct db_daemon_data *d, client_socket_t client,
             return 0;
         /* failed rm received from vchan is fatal - means some database
          * de-synchronization */
-        if (client == INVALID_CLIENT_SOCKET)
+        if (client == NULL)
             return 0;
     } else {
-        if (client != INVALID_CLIENT_SOCKET && d->remote_connected) {
+        if (client != NULL && d->remote_connected) {
             /* if rm was from local client, duplicate it through vchan */
-            write_vchan_or_client(d, INVALID_CLIENT_SOCKET,
+            write_vchan_or_client(d, NULL,
                     (char*)hdr, sizeof(*hdr));
         }
         hdr->type = QDB_RESP_OK;
@@ -356,14 +356,14 @@ int handle_rm(struct db_daemon_data *d, client_socket_t client,
 /** Handle 'read' command. 
  * This command is only valid local socket.
  * @param d Daemon global data
- * @param client Client connection (INVALID_CLIENT_SOCKET means vchan)
+ * @param client Client connection (NULL means vchan)
  * @param hdr Original header received from client.
  *        WARNING: This struct will be modified to send response.
  * @return 1 on success (message handled and responded, even if response is
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_read(struct db_daemon_data *d, client_socket_t client,
+int handle_read(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     struct qubesdb_entry *db_entry;
 
@@ -396,14 +396,14 @@ int handle_read(struct db_daemon_data *d, client_socket_t client,
  * This command is valid on both client socket and vchan, so input data must be
  * handled with special care.
  * @param d Daemon global data
- * @param client Client connection (INVALID_CLIENT_SOCKET means vchan)
+ * @param client Client connection (NULL means vchan)
  * @param hdr Original header received from client.
  *        WARNING: This struct will be modified to send response.
  * @return 1 on success (message handled and responded, even if response is
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_multiread(struct db_daemon_data *d, client_socket_t client,
+int handle_multiread(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     struct qubesdb_entry *db_entry;
     char search_path[QDB_MAX_PATH];
@@ -452,14 +452,14 @@ int handle_multiread(struct db_daemon_data *d, client_socket_t client,
 /** Handle 'list' command. Send list of paths matching given prefix.
  * This command is only valid local socket.
  * @param d Daemon global data
- * @param client Client connection (INVALID_CLIENT_SOCKET means vchan)
+ * @param client Client connection (NULL means vchan)
  * @param hdr Original header received from client.
  *        WARNING: This struct will be modified to send response.
  * @return 1 on success (message handled and responded, even if response is
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_list(struct db_daemon_data *d, client_socket_t client,
+int handle_list(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     struct qubesdb_entry *db_entry;
     char search_path[QDB_MAX_PATH];
@@ -497,7 +497,7 @@ int handle_list(struct db_daemon_data *d, client_socket_t client,
  * valid only on vchan and is used only for initial database synchronization.
  * Modify the database but do not send any notigications nor fire watches.
  * @param d Daemon global data
- * @param client Client connection (INVALID_CLIENT_SOCKET means vchan)
+ * @param client Client connection (NULL means vchan)
  * @param hdr Original header received from client.
  * @return 1 on success, 0 if fatal error occured and client should be
  *           disconnected.
@@ -554,18 +554,18 @@ int handle_vchan_data(struct db_daemon_data *d) {
 
     switch (hdr.type) {
         case QDB_CMD_WRITE:
-            if (!handle_write(d, INVALID_CLIENT_SOCKET, &hdr))
+            if (!handle_write(d, NULL, &hdr))
                 return 0;
             break;
         case QDB_CMD_MULTIREAD:
-            if (!handle_multiread(d, INVALID_CLIENT_SOCKET, &hdr))
+            if (!handle_multiread(d, NULL, &hdr))
                 return 0;
             /* remote have synchronized database, send furher updates */
             d->remote_connected = 1;
             break;
 
         case QDB_CMD_RM:
-            if (!handle_rm(d, INVALID_CLIENT_SOCKET, &hdr))
+            if (!handle_rm(d, NULL, &hdr))
                 return 0;
             break;
 
@@ -605,7 +605,7 @@ int handle_vchan_data(struct db_daemon_data *d) {
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_client_data(struct db_daemon_data *d, client_socket_t client,
+int handle_client_data(struct db_daemon_data *d, struct client *client,
         char *data, int data_len) {
     struct qdb_hdr hdr;
     int ret = 1;
@@ -623,7 +623,7 @@ int handle_client_data(struct db_daemon_data *d, client_socket_t client,
 
     if (!verify_hdr(&hdr, 0)) {
         fprintf(stderr, "invalid message received from client "
-                CLIENT_SOCKET_FORMAT "\n", client);
+                CLIENT_SOCKET_FORMAT "\n", client->fd);
         /* recovery path */
         return discard_data_and_send_error(d, client, &hdr);
     }
@@ -676,12 +676,12 @@ int handle_client_data(struct db_daemon_data *d, client_socket_t client,
     return ret;
 }
 
-int handle_client_connect(struct db_daemon_data *d, client_socket_t client) {
+int handle_client_connect(struct db_daemon_data *d, struct client *client) {
     /* currently nothing */
     return 1;
 }
 
-int handle_client_disconnect(struct db_daemon_data *d, client_socket_t client) {
+int handle_client_disconnect(struct db_daemon_data *d, struct client *client) {
     /* remove all watches owned by this client */
     qubesdb_remove_watch(d->db, NULL, client);
     return 1;
@@ -694,5 +694,5 @@ int request_full_db_sync(struct db_daemon_data *d) {
     hdr.path[0] = 0;
     hdr.data_len = 0;
     
-    return write_vchan_or_client(d, INVALID_CLIENT_SOCKET, (char*)&hdr, sizeof(hdr));
+    return write_vchan_or_client(d, NULL, (char*)&hdr, sizeof(hdr));
 }

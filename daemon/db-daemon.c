@@ -117,7 +117,7 @@ int add_client(struct db_daemon_data *d, client_socket_t c
     client->next = d->client_list;
     d->client_list = client;
 
-    return handle_client_connect(d, c);
+    return handle_client_connect(d, client);
 }
 
 /** Disconnect client
@@ -125,20 +125,23 @@ int add_client(struct db_daemon_data *d, client_socket_t c
  * @param c Socket of client to disconnect
  * @return 1 on success, 0 on failure
  */
-int disconnect_client(struct db_daemon_data *d, client_socket_t c) {
+int disconnect_client(struct db_daemon_data *d, struct client *c) {
     struct client *client, *prev_client;
 
+    if (!handle_client_disconnect(d, c))
+        return 0;
+
 #ifdef WINNT
-    DisconnectNamedPipe(c);
-    CloseHandle(c);
+    DisconnectNamedPipe(c->fd);
+    CloseHandle(c->fd);
 #else
-    close(c);
+    close(c->fd);
 #endif
 
     client = d->client_list;
     prev_client = NULL;
     while (client) {
-        if (client->fd == c) {
+        if (client == c) {
             if (prev_client)
                 prev_client->next = client->next;
             else
@@ -150,7 +153,7 @@ int disconnect_client(struct db_daemon_data *d, client_socket_t c) {
         client = client->next;
     }
 
-    return handle_client_disconnect(d, c);
+    return 1;
 }
 
 #ifdef WINNT
@@ -350,16 +353,16 @@ int mainloop(struct db_daemon_data *d) {
             while (client) {
                 if (client->pending_io && read_events[ret] == client->overlapped_read.hEvent) {
                     DWORD got_bytes;
-                    HANDLE client_to_remove = INVALID_HANDLE_VALUE;
+                    struct client *client_to_remove = NULL;
                     if (!GetOverlappedResult(client->fd, &client->overlapped_read, &got_bytes, FALSE)) {
                         perror("client read");
                         client_to_remove = client->fd;
                     }
                     client->pending_io = 0;
-                    if (!handle_client_data(d, client->fd, client->read_buffer, got_bytes)) {
-                        client_to_remove = client->fd;
+                    if (!handle_client_data(d, client, client->read_buffer, got_bytes)) {
+                        client_to_remove = client;
                     }
-                    if (client_to_remove != INVALID_HANDLE_VALUE) {
+                    if (client_to_remove) {
                         client = client->next;
                         disconnect_client(d, client_to_remove);
                         continue;
@@ -504,8 +507,8 @@ int mainloop(struct db_daemon_data *d) {
         client = d->client_list;
         while (client) {
             if (FD_ISSET(client->fd, &read_fdset)) {
-                if (!handle_client_data(d, client->fd, NULL, 0)) {
-                    int client_to_remove = client->fd;
+                if (!handle_client_data(d, client, NULL, 0)) {
+                    struct client *client_to_remove = client;
                     client = client->next;
                     disconnect_client(d, client_to_remove);
                     continue;
