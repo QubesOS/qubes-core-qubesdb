@@ -3,6 +3,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <errno.h>
+#include <fcntl.h>
+#include <assert.h>
 #ifdef WINNT
 #include <windows.h>
 #endif
@@ -122,6 +124,18 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         }
         return 1;
     } else {
+#ifndef WINNT
+        int buf_datacount;
+        while ((buf_datacount = buffer_datacount(c->write_queue))) {
+            ret = write(c->fd, buffer_data(c->write_queue), buf_datacount);
+            if (ret < 0) {
+                perror("client write");
+                return 0;
+            }
+            buffer_substract(c->write_queue, ret);
+        }
+#endif
+
         count = 0;
         while (count < data_len) {
 #ifdef WINNT
@@ -250,6 +264,64 @@ int discard_data_and_send_error(struct db_daemon_data *d, struct client *client,
             return 1;
     }
     return 0;
+}
+
+/** Send data to a client, but in non-blocking way - if write would block,
+ * buffer the data instead
+ * @param client Client connection
+ * @param buf Data to send
+ * @param len Amount of data
+ * @return 1 on when everything was sent, 0 otherwise (errors, some data buffered)
+ */
+int write_client_buffered(struct client *client, char *buf, size_t size) {
+    int ret, buf_datacount, written;
+
+    assert(client);
+
+    if (fcntl(client->fd, F_SETFL, O_NONBLOCK) < 0) {
+        perror("fcntl");
+        return 0;
+    }
+    while ((buf_datacount = buffer_datacount(client->write_queue))) {
+        ret = write(client->fd, buffer_data(client->write_queue), buf_datacount);
+        if (ret < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                buffer_append(client->write_queue, buf, size);
+                ret = 0;
+                goto out;
+            } else {
+                /* discard the data, then probably close socket */
+                buffer_substract(client->write_queue, buf_datacount);
+                ret = 0;
+                goto out;
+            }
+            break;
+        }
+        buffer_substract(client->write_queue, ret);
+    }
+
+    written = 0;
+    while (written < size) {
+        ret = write(client->fd, buf+written, size-written);
+        if (ret < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                buffer_append(client->write_queue, buf+written, size-written);
+                goto out;
+            } else {
+                perror("client write");
+                ret = 0;
+                goto out;
+            }
+        }
+        written += ret;
+    }
+    ret = 1;
+out:
+    if (fcntl(client->fd, F_SETFL, 0) < 0) {
+        perror("fcntl");
+        return 0;
+    }
+    return ret;
 }
 
 /** Handle 'write' command. Modify the database and send notification to other

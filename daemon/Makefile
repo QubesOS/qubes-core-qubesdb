@@ -25,7 +25,7 @@ install:
 	install -d $(DESTDIR)$(SBINDIR)
 	install qubesdb-daemon$(EXEEXT) $(DESTDIR)$(SBINDIR)/
 
-qubesdb-daemon$(EXEEXT): db-cmds.o db-daemon.o db-core.o
+qubesdb-daemon$(EXEEXT): db-cmds.o db-daemon.o db-core.o buffer.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(APPEND_LDFLAGS) $(LIBS)
 
 clean:

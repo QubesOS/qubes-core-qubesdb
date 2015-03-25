@@ -4,6 +4,8 @@
 
 #include <libvchan.h>
 
+#include "buffer.h"
+
 #ifdef WINNT
 typedef HANDLE client_socket_t;
 #define INVALID_CLIENT_SOCKET INVALID_HANDLE_VALUE
@@ -25,6 +27,8 @@ typedef int client_socket_t;
 
 struct client;
 
+typedef int (*send_watch_notify_t)(struct client *c, char *buf, size_t len);
+
 struct qubesdb_entry {
     struct qubesdb_entry *prev;
     struct qubesdb_entry *next;
@@ -44,6 +48,7 @@ struct qubesdb_watch {
 struct qubesdb {
     struct qubesdb_entry *entries;
     struct qubesdb_watch *watches;
+    send_watch_notify_t send_watch_notify;
 };
 
 struct client {
@@ -53,6 +58,8 @@ struct client {
     int pending_io;
     OVERLAPPED overlapped_read;
     char read_buffer[sizeof(struct qdb_hdr)];
+#else
+    struct buffer *write_queue;
 #endif
 };
 
@@ -78,7 +85,7 @@ struct db_daemon_data {
     struct client *client_list; /* local clients */
 };
 
-struct qubesdb *qubesdb_init(void);
+struct qubesdb *qubesdb_init(send_watch_notify_t);
 
 struct qubesdb_entry *qubesdb_search(struct qubesdb *db, char *path, int exact);
 
@@ -102,6 +109,7 @@ int handle_client_data(struct db_daemon_data *d, struct client *client,
                 char *data, int data_len);
 int handle_client_connect(struct db_daemon_data *d, struct client *client);
 int handle_client_disconnect(struct db_daemon_data *d, struct client *client);
+int write_client_buffered(struct client *client, char *buf, size_t len);
 
 int request_full_db_sync(struct db_daemon_data *d);
 

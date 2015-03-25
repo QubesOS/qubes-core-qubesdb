@@ -16,6 +16,7 @@
 #include <sys/stat.h>
 #include <signal.h>
 #include <errno.h>
+#include "buffer.h"
 
 #ifndef WINNT
 /* For now link with systemd unconditionaly (all Fedora versions are using it,
@@ -113,6 +114,13 @@ int add_client(struct db_daemon_data *d, client_socket_t c
     client->pending_io = 0;
     memset(&client->overlapped_read, 0, sizeof(client->overlapped_read));
     client->overlapped_read.hEvent = socket_event;
+#else
+    client->write_queue = buffer_create();
+    if (!client->write_queue) {
+        fprintf(stderr, "ERROR: cannot allocate memory for new client buffer\n");
+        free(client);
+        return 0;
+    }
 #endif
     client->next = d->client_list;
     d->client_list = client;
@@ -136,6 +144,7 @@ int disconnect_client(struct db_daemon_data *d, struct client *c) {
     CloseHandle(c->fd);
 #else
     close(c->fd);
+    buffer_free(c->write_queue);
 #endif
 
     client = d->client_list;
@@ -410,11 +419,12 @@ int init_server_socket(struct db_daemon_data *d) {
 #else /* !WINNT */
 
 int fill_fdsets_for_select(struct db_daemon_data *d,
-        fd_set * read_fdset) {
+        fd_set * read_fdset, fd_set * write_fdset) {
     struct client *client;
     int max_fd;
 
     FD_ZERO(read_fdset);
+    FD_ZERO(write_fdset);
     FD_SET(d->socket_fd, read_fdset);
     max_fd = d->socket_fd;
     if (d->vchan) {
@@ -425,7 +435,14 @@ int fill_fdsets_for_select(struct db_daemon_data *d,
 
     client = d->client_list;
     while (client) {
-        FD_SET(client->fd, read_fdset);
+        /* Do not read commands from client, which have some buffered data,
+         * first try to send them all. If client do not handle write buffering
+         * properly, it can cause a deadlock there, but at least qubesdb-daemon
+         * will still handle other requests */
+        if (buffer_datacount(client->write_queue))
+            FD_SET(client->fd, write_fdset);
+        else
+            FD_SET(client->fd, read_fdset);
         if (client->fd > max_fd)
             max_fd = client->fd;
         client = client->next;
@@ -435,6 +452,7 @@ int fill_fdsets_for_select(struct db_daemon_data *d,
 
 int mainloop(struct db_daemon_data *d) {
     fd_set read_fdset;
+    fd_set write_fdset;
     struct client *client;
     int max_fd;
     int ret;
@@ -446,7 +464,7 @@ int mainloop(struct db_daemon_data *d) {
     sigaddset(&sigterm_mask, SIGTERM);
     
     while (1) {
-        max_fd = fill_fdsets_for_select(d, &read_fdset);
+        max_fd = fill_fdsets_for_select(d, &read_fdset, &write_fdset);
 
         if (sigprocmask(SIG_BLOCK, &sigterm_mask, &oldmask) < 0) {
             perror("sigprocmask");
@@ -456,7 +474,7 @@ int mainloop(struct db_daemon_data *d) {
             fprintf(stderr, "terminating\n");
             break;
         }
-        ret = pselect(max_fd+1, &read_fdset, NULL, NULL, &ts, &oldmask);
+        ret = pselect(max_fd+1, &read_fdset, &write_fdset, NULL, &ts, &oldmask);
         if (ret < 0) {
             if (errno == EINTR)
                 continue;
@@ -506,6 +524,10 @@ int mainloop(struct db_daemon_data *d) {
 
         client = d->client_list;
         while (client) {
+            if (FD_ISSET(client->fd, &write_fdset)) {
+                /* just send bufferred data, possibly not all of them */
+                write_client_buffered(client, NULL, 0);
+            }
             if (FD_ISSET(client->fd, &read_fdset)) {
                 if (!handle_client_data(d, client, NULL, 0)) {
                     struct client *client_to_remove = client;
@@ -787,7 +809,7 @@ int main(int argc, char **argv) {
     freopen(LOGFILE_PATH, "a", stderr);
 #endif
 
-    d.db = qubesdb_init();
+    d.db = qubesdb_init(write_client_buffered);
     if (!d.db) {
         fprintf(stderr, "FATAL: database initialization failed\n");
         exit(1);

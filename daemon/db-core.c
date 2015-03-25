@@ -6,7 +6,7 @@
 #include <qubesdb.h>
 #include <qubesdb_internal.h>
 
-struct qubesdb *qubesdb_init(void) {
+struct qubesdb *qubesdb_init(send_watch_notify_t send_notify_func) {
     struct qubesdb *db;
 
     db = malloc(sizeof (*db));
@@ -27,6 +27,8 @@ struct qubesdb *qubesdb_init(void) {
     db->entries->value = strdup("");
 
     db->watches = NULL;
+
+    db->send_watch_notify = send_notify_func;
 
     return db;
 }
@@ -212,7 +214,7 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
             GetOverlappedResult(watch->client_socket, &ov, &written, TRUE);
 #else
 
-            if (write(watch->client->fd, &hdr, sizeof(hdr)) < 0) {
+            if (db->send_watch_notify && db->send_watch_notify(watch->client, (char*)&hdr, sizeof(hdr)) < 0) {
                 fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client->fd);
             }
 #endif
