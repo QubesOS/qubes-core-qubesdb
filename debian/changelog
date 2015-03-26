@@ -1,3 +1,45 @@
+qubesdb (3.0.1-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * client: set errno=NOENT when no entry found in qdb_read
+  * client: fix qdb_multiread memory allocation
+  * python: fix indentation
+  * python: add multiread support
+  * client: Remove unused "during_multiread" flag
+  * client+python: Improve error handling and reporting
+  * python: add watch_fd() used for integrating QubesDB with other event
+    loops
+  * Fix startup dependency loop
+
+  [ Jason Mehring ]
+  * debian:  Added initial Debian packaging
+  * debian: update broken depends
+  * debian: Added debian patch to remove Fedora reference (fedora-
+    loadmodules.service) from qubes-db.service systemd unit file
+  * debian: wheezy: Removed an unneeded depend
+
+  [ Marek Marczykowski-Górecki ]
+  * daemon: Periodically check if remote domain is still alive
+  * daemon: fix compile warnings
+  * debian: exclude binary packages from source archive
+  * Fix link options order
+
+  [ Jason Mehring ]
+  * debian: Fixed incorrect reference to binary version depend
+  * debian:  Add extend-diff-ignore options to debian packager
+
+  [ Marek Marczykowski-Górecki ]
+  * daemon: reconnect if dom0 daemon was restarted
+  * daemon: fire the watches even on initial database population
+  * rpm: fix -devel package requires
+  * daemon: ensure that pidfile is group readable and _writable_
+  * daemon: make the log writable by qubes group
+  * daemon: pass the whole struct client to data handling functions
+  * daemon: implement buffering of watch events
+  * daemon: enable compiler optimization
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 26 Mar 2015 23:58:07 +0100
+
 qubesdb (3.0.0-1) jessie; urgency=medium
 
   * Initial Release.
