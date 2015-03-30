@@ -127,7 +127,7 @@ static int connect_to_daemon(char *vmname) {
     int len;
     int fd;
 
-    if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+    if ((fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
         perror("socket");
         goto error;
     }
