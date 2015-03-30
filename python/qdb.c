@@ -515,7 +515,7 @@ PyMODINIT_FUNC initqdb(void)
     qdb_disconnected_error = PyErr_NewExceptionWithDoc(
             PKG ".DisconnectedError",
             "Raised when connection to QubesDB daemon was broken",
-            PyExc_RuntimeError,
+            qdb_error,
             NULL
             );
     Py_INCREF(qdb_disconnected_error);
