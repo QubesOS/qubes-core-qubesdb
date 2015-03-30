@@ -41,6 +41,7 @@ URL:		http://www.qubes-os.org/
 
 BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
 BuildRequires:	systemd-devel
+BuildRequires:	python-devel
 Requires:	qubes-libvchan-%{backend_vmm}
 
 %define _builddir %(pwd)
