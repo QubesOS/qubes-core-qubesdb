@@ -1,3 +1,11 @@
+qubesdb (3.0.2-1) wheezy; urgency=medium
+
+  * client: mark socket with SOCK_CLOEXEC
+  * python: make qdb.DisconnectedError to be a child of qdb.Error
+  * rpm: add missing BuildRequires: python-devel
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 01 Apr 2015 00:10:50 +0200
+
 qubesdb (3.0.1-1) wheezy; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
