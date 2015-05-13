@@ -146,6 +146,8 @@ static int connect_to_daemon(char *vmname) {
     return fd;
 
 error:
+    if (fd >= 0)
+        close(fd);
     return -1;
 }
 
