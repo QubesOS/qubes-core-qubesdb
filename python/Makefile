@@ -1,7 +1,7 @@
 .PHONY: all
 all: build
 
-PYTHON = python
+PYTHON ?= python
 
 .PHONY: build
 build: 

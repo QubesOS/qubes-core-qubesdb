@@ -10,6 +10,7 @@ else ifeq ($(PACKAGE_SET),vm)
   endif
 
   RPM_SPEC_FILES += rpm_spec/qubes-db-vm.spec
+  ARCH_BUILD_DIRS := archlinux
 endif
 
 WIN_SOURCE_SUBDIRS := .
