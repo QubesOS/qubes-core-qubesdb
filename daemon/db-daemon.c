@@ -701,7 +701,10 @@ int main(int argc, char **argv) {
                 exit(1);
             case 0:
                 close(ready_pipe[0]);
-                snprintf(log_path, sizeof(log_path), "/var/log/qubes/qubesdb.%s.log", d.remote_name);
+                if (d.remote_name)
+                    snprintf(log_path, sizeof(log_path), "/var/log/qubes/qubesdb.%s.log", d.remote_name);
+                else
+                    snprintf(log_path, sizeof(log_path), "/var/log/qubes/qubesdb.log");
 
                 close(0);
                 old_umask = umask(0);
