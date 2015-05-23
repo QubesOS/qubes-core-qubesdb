@@ -24,12 +24,9 @@
 #endif
 
 #ifndef WIN32
-/* For now link with systemd unconditionaly (all Fedora versions are using it,
- * Archlinux also). But if someone needs no systemd in dependencies,
- * it can be easily turned off, check the code in main() - conditions on
- * getenv("NOTIFY_SOCKET").
- */
+#ifdef HAVE_SYSTEMD
 #include <systemd/sd-daemon.h>
+#endif
 #else // !WIN32
 // parameters for a client pipe thread
 struct thread_param {
@@ -703,7 +700,11 @@ int fuzz_main(int argc, char **argv) {
      * sucessful start */
     /* FIXME: OS dependent code */
 #ifndef WIN32
+#ifdef HAVE_SYSTEMD
     if (!getenv("NOTIFY_SOCKET")) {
+#else
+    if (1) {
+#endif
         char buf[6];
         char log_path[MAX_FILE_PATH];
         int log_fd;
@@ -781,7 +782,7 @@ int fuzz_main(int argc, char **argv) {
                       NULL, // notification handler
                       NULL // notification context
                       );
-#else
+#else /* WIN32 */
     if (!init_vchan(&d)) {
         fprintf(stderr, "FATAL: vchan initialization failed\n");
         exit(1);
@@ -805,9 +806,12 @@ int fuzz_main(int argc, char **argv) {
 
     /* now ready for serving requests, notify parent */
     /* FIXME: OS dependent code */
+#ifdef HAVE_SYSTEMD
     if (getenv("NOTIFY_SOCKET")) {
         sd_notify(1, "READY=1");
-    } else {
+    } else
+#endif /* HAVE_SYSTEMD */
+    {
         if (write(ready_pipe[1], "ready", strlen("ready")) != strlen("ready"))
             perror("failed to notify parent");
         close(ready_pipe[1]);
@@ -816,7 +820,7 @@ int fuzz_main(int argc, char **argv) {
     create_pidfile(&d);
 
     ret = !mainloop(&d);
-#endif
+#endif /* !WIN32 */
 
     if (d.vchan)
         libvchan_close(d.vchan);
