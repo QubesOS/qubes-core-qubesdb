@@ -3,6 +3,19 @@
 
 #ifdef WINNT
 #include <windows.h>
+
+#ifdef QUBESDBCLIENT_EXPORTS
+#    define QUBESDBCLIENT_API __declspec(dllexport)
+#else
+#    define QUBESDBCLIENT_API __declspec(dllimport)
+#endif
+
+#else /* WINNT */
+define QUBESDBCLIENT_API
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /** @file qubesdb-client.h
@@ -36,11 +49,13 @@ typedef struct qdb_handle* qdb_handle_t;
  * @return Connection handle or NULL in case of failure, should be closed with
  * qdb_close after use
  */
+QUBESDBCLIENT_API
 qdb_handle_t qdb_open(char *vmname);
 
 /** Close connection to QubesDB daemon
  * @param h Connection handle
  */
+QUBESDBCLIENT_API
 void qdb_close(qdb_handle_t h);
 
 /** Read single value from QubesDB
@@ -49,6 +64,7 @@ void qdb_close(qdb_handle_t h);
  * @param value_len[out] Size of returned data (optional)
  * @return Key contents (NULL terminated) or NULL on failure. Value must be freed with free().
  */
+QUBESDBCLIENT_API
 char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len);
 
 /** Get path list matching given prefix
@@ -58,6 +74,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len);
  * @return NULL terminated list of NULL terminated strings with list of paths.
  *         Values must be freed with free().
  */
+QUBESDBCLIENT_API
 char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len);
 
 /** Get path list matching given prefixB
@@ -69,6 +86,7 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len);
  *         value, path, value, ...]. The whole list is terminated with two NULLs.
  * All returned data must be freed with free().
  */
+QUBESDBCLIENT_API
 char **qdb_multiread(qdb_handle_t h, char *path,
         unsigned int **values_len, unsigned int *list_len);
 
@@ -79,6 +97,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
  * @param value_len Size of 'value' param
  * @return 1 on success, 0 on failure
  */
+QUBESDBCLIENT_API
 int qdb_write(qdb_handle_t h, char *path, char *value, unsigned int value_len);
 
 /** Remove value from QubesDB
@@ -86,6 +105,7 @@ int qdb_write(qdb_handle_t h, char *path, char *value, unsigned int value_len);
  * @param path Path to remove, if ends with '/' will remove whole directory
  * @return 1 on success (even if no entries removed), 0 on failure
  */
+QUBESDBCLIENT_API
 int qdb_rm(qdb_handle_t h, char *path);
 
 
@@ -95,6 +115,7 @@ int qdb_rm(qdb_handle_t h, char *path);
  * @param path Path to watch, if ends with '/' will watch whole directory
  * @return 1 on success, 0 on failure
  */
+QUBESDBCLIENT_API
 int qdb_watch(qdb_handle_t h, char *path);
 
 /** Unregister watch for given path.
@@ -104,6 +125,7 @@ int qdb_watch(qdb_handle_t h, char *path);
  * @param path Path of watch to be unregistered.
  * @return 1 on success, 0 on failure
  */
+QUBESDBCLIENT_API
 int qdb_unwatch(qdb_handle_t h, char *path);
 
 /** Wait for watch event. If some event received earlier (but after last
@@ -112,6 +134,7 @@ int qdb_unwatch(qdb_handle_t h, char *path);
  * @param h Connection handle
  * @return Modified path or NULL on failure. Value must be freed with free().
  */
+QUBESDBCLIENT_API
 char *qdb_read_watch(qdb_handle_t h);
 
 /** Return FD for select().
@@ -119,6 +142,7 @@ char *qdb_read_watch(qdb_handle_t h);
  * @return FD number to use in select() call, on windows it is HANDLE for
  * event object.
  */
+QUBESDBCLIENT_API
 #ifdef WINNT
 HANDLE
 #else
@@ -127,4 +151,7 @@ int
 qdb_watch_fd(qdb_handle_t h);
 
 
+#ifdef __cplusplus
+}
+#endif
 #endif /* _QUBESDB_CLIENT_H */

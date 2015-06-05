@@ -1,0 +1,33 @@
+<?xml version='1.0' encoding='windows-1252'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+
+    <Module
+        Id='qubesdb'
+        Language='1033'
+        Codepage='1252'
+        Version='$(env.VERSION)'
+    >
+
+    <Package
+        Id='{F640AC64-D8BB-4354-B88F-AE3AB2D363F2}'
+        Keywords='Installer'
+        Description="QubesDB library"
+        Comments='no comment'
+        Manufacturer='Invisible Things Lab'
+        InstallScope='perMachine'
+        InstallerVersion='200'
+        Languages='1033'
+        SummaryCodepage='1252'
+        InstallPrivileges="elevated"
+    />
+
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+        <Directory Id='System64Folder'>
+            <Component Id='clientDll' Guid='{E9742F11-6E77-44FC-8A53-168BE2D9273A}'>
+                <File Id='qubesdb_client.dll' Name='qubesdb-client.dll' DiskId='1' Source='bin\$(env.DDK_ARCH)\qubesdb-client.dll' KeyPath="no" />
+            </Component>
+        </Directory>
+    </Directory>
+
+    </Module>
+</Wix>

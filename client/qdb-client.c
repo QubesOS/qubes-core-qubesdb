@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #ifdef WINNT
 #include <windows.h>
 #include <Lmcons.h>
-#include <tchar.h>
+#include <strsafe.h>
+#include <log.h>
 #else
+#include <unistd.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 #endif
@@ -22,6 +23,7 @@
  * ReadFile/WriteFile expects DWORD as bytes count */
 #ifdef WINNT
 typedef DWORD rw_ret_t;
+#define strdup _strdup
 #else
 typedef int rw_ret_t;
 #endif
@@ -58,29 +60,29 @@ void free_path_list(struct path_list *plist) {
 
 #ifdef WINNT
 static HANDLE connect_to_daemon(char *vmname) {
-    TCHAR server_socket_path[MAX_FILE_NAME];
+    WCHAR server_socket_path[MAX_FILE_NAME];
     HANDLE fd;
     ULONG   uResult;
 
     if (vmname && strcmp(vmname,"dom0") != 0) {
-        _stprintf_s(server_socket_path, sizeof(server_socket_path),
+        StringCbPrintf(server_socket_path, sizeof(server_socket_path),
                 QDB_DAEMON_PATH_PATTERN, vmname);
     } else {
 #ifdef BACKEND_VMM_wni
         /* on WNI we don't have separate namespace for each VM (all is in the
          * single system) */
         DWORD user_name_len = UNLEN + 1;
-        TCHAR user_name[user_name_len];
+        WCHAR user_name[user_name_len];
 
         if (!GetUserName(user_name, &user_name_len)) {
             perror("GetUserName");
             return 0;
         }
-        _stprintf_s(server_socket_path, sizeof(server_socket_path),
+        StringCbPrintf(server_socket_path, sizeof(server_socket_path),
                 QDB_DAEMON_LOCAL_PATH, user_name);
 #else
 
-        _stprintf_s(server_socket_path, sizeof(server_socket_path),
+        StringCbPrintf(server_socket_path, sizeof(server_socket_path),
                 QDB_DAEMON_LOCAL_PATH);
 #endif
     }
@@ -104,15 +106,14 @@ static HANDLE connect_to_daemon(char *vmname) {
         // Exit if an error other than ERROR_PIPE_BUSY occurs.
         uResult = GetLastError();
         if (ERROR_PIPE_BUSY != uResult) {
-            fprintf(stderr, "qubesdb pipe not found, CreateFile(): %lu\n", uResult);
+            perror("open qubesdb pipe");
             return INVALID_HANDLE_VALUE;
         }
 
         // All pipe instances are busy, so wait for 10 seconds.
 
         if (!WaitNamedPipe(server_socket_path, 10000)) {
-            uResult = GetLastError();
-            fprintf(stderr, "qubesdb pipe is busy, WaitNamedPipe(): %lu\n", uResult);
+            perror("WaitNamedPipe");
             return INVALID_HANDLE_VALUE;
         }
     }
@@ -334,7 +335,11 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
         if (len <= 0) {
             if (len == 0) {
                 h->connected = 0;
+#ifdef WINNT
+                CloseHandle(h->fd);
+#else
                 close(h->fd);
+#endif
                 errno = EPIPE;
             }
             return 0;
@@ -370,7 +375,7 @@ static int verify_path(char *path) {
 char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
     struct qdb_hdr hdr;
     char *value;
-    int got_data;
+    uint32_t got_data;
     rw_ret_t ret;
 
     if (!h)
@@ -380,7 +385,11 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
 
     hdr.type = QDB_CMD_READ;
     /* already verified string length */
+#ifdef WINNT
+    StringCbCopyA(hdr.path, sizeof(hdr.path), path);
+#else
     strcpy(hdr.path, path);
+#endif
     hdr.data_len = 0;
     if (!send_command_to_daemon(h, &hdr, NULL))
         /* some fatal error perhaps? */
@@ -438,7 +447,11 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
 
     hdr.type = QDB_CMD_LIST;
     /* already verified string length */
+#ifdef WINNT
+    StringCbCopyA(hdr.path, sizeof(hdr.path), path);
+#else
     strcpy(hdr.path, path);
+#endif
     hdr.data_len = 0;
     if (!send_command_to_daemon(h, &hdr, NULL))
         /* some fatal error perhaps? */
@@ -504,7 +517,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
     struct qdb_hdr hdr;
     int count = 0;
     char *value;
-    int got_data;
+    uint32_t got_data;
     char **ret = NULL;
     rw_ret_t read_ret;
     unsigned int *len_ret = NULL;
@@ -516,7 +529,11 @@ char **qdb_multiread(qdb_handle_t h, char *path,
 
     hdr.type = QDB_CMD_MULTIREAD;
     /* already verified string length */
+#ifdef WINNT
+    StringCbCopyA(hdr.path, sizeof(hdr.path), path);
+#else
     strcpy(hdr.path, path);
+#endif
     hdr.data_len = 0;
     if (!send_command_to_daemon(h, &hdr, NULL))
         /* some fatal error perhaps? */
@@ -628,7 +645,11 @@ int qdb_write(qdb_handle_t h, char *path, char *value, unsigned int value_len) {
 
     hdr.type = QDB_CMD_WRITE;
     /* already verified string length */
+#ifdef WINNT
+    StringCbCopyA(hdr.path, sizeof(hdr.path), path);
+#else
     strcpy(hdr.path, path);
+#endif
     hdr.data_len = value_len;
     if (!send_command_to_daemon(h, &hdr, value))
         /* some fatal error perhaps? */
@@ -661,7 +682,11 @@ static int qdb__simple_cmd(qdb_handle_t h, char *path, int cmd) {
 
     hdr.type = cmd;
     /* already verified string length */
+#ifdef WINNT
+    StringCbCopyA(hdr.path, sizeof(hdr.path), path);
+#else
     strcpy(hdr.path, path);
+#endif
     hdr.data_len = 0;
 
     if (!send_command_to_daemon(h, &hdr, NULL))

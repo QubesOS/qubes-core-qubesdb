@@ -1,9 +1,5 @@
 CFLAGS += -I../include -g -Wall -Werror -pie
-ifneq ($(OS),Windows_NT)
 CFLAGS += -fPIC
-else
-CFLAGS += -DUNICODE -D_UNICODE
-endif
 CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
 
 LIBDIR=/usr/lib64
@@ -24,11 +20,7 @@ install: all
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-watch
 
 .PHONY: libqubesdb
-ifeq ($(OS),Windows_NT)
-libqubesdb: libqubesdb.dll
-else
 libqubesdb: libqubesdb.so
-endif
 
 libqubesdb.so: qdb-client.o
 	$(CC) $(LDFLAGS) -shared -o $@ $^ $(APPEND_LDFLAGS)

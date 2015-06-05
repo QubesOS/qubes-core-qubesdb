@@ -13,10 +13,12 @@ else ifeq ($(PACKAGE_SET),vm)
   ARCH_BUILD_DIRS := archlinux
 endif
 
-WIN_SOURCE_SUBDIRS := .
-WIN_COMPILER := mingw
-WIN_PACKAGE_CMD := make msi
-WIN_BUILD_DEPS = core-vchan-$(BACKEND_VMM)
+WIN_SOURCE_SUBDIRS := windows
+WIN_COMPILER := msbuild
+WIN_OUTPUT_LIBS = bin
+WIN_OUTPUT_HEADERS = ../include
+WIN_BUILD_DEPS = core-vchan-$(BACKEND_VMM) windows-utils
+WIN_PREBUILD_CMD = set_version.bat && powershell -executionpolicy bypass set_version.ps1
 
 source-debian-quilt-copy-in: VERSION = $(shell cat $(ORIG_SRC)/version)
 source-debian-quilt-copy-in: ORIG_FILE = "$(CHROOT_DIR)/$(DIST_SRC)/../qubesdb_$(VERSION).orig.tar.gz"
