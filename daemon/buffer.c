@@ -33,12 +33,12 @@ struct buffer *buffer_create(void)
     b = malloc(sizeof(struct buffer));
     if (!b)
         return NULL;
-	b->buffer = malloc(BUFFER_SIZE_MIN);
-	if (!b->buffer) {
+    b->buffer = malloc(BUFFER_SIZE_MIN);
+    if (!b->buffer) {
         free(b);
-		return NULL;
-	}
-	b->buffer_size = BUFFER_SIZE_MIN;
+        return NULL;
+    }
+    b->buffer_size = BUFFER_SIZE_MIN;
     b->data_offset = 0;
     b->data_count = 0;
     return b;
@@ -58,51 +58,51 @@ void buffer_free(struct buffer *b) {
 
 int buffer_append(struct buffer *b, char *buf, int size)
 {
-	if (size + b->data_offset + b->data_count > b->buffer_size) {
-		int newsize = b->data_count + size + BUFFER_SIZE_MIN;
-		char *newbuf;
-		newbuf = malloc(newsize);
-		if (!newbuf) {
+    if (size + b->data_offset + b->data_count > b->buffer_size) {
+        int newsize = b->data_count + size + BUFFER_SIZE_MIN;
+        char *newbuf;
+        newbuf = malloc(newsize);
+        if (!newbuf) {
             perror("malloc");
             return 0;
-		}
-		memcpy(newbuf, b->buffer + b->data_offset, b->data_count);
-		free(b->buffer);
-		b->buffer = newbuf;
-		b->buffer_size = newsize;
-		b->data_offset = 0;
-	}
-	memcpy(b->buffer + b->data_offset + b->data_count, buf, size);
-	b->data_count += size;
+        }
+        memcpy(newbuf, b->buffer + b->data_offset, b->data_count);
+        free(b->buffer);
+        b->buffer = newbuf;
+        b->buffer_size = newsize;
+        b->data_offset = 0;
+    }
+    memcpy(b->buffer + b->data_offset + b->data_count, buf, size);
+    b->data_count += size;
     return 1;
 }
 
 int buffer_datacount(struct buffer *b)
 {
-	return b->data_count;
+    return b->data_count;
 }
 
 char *buffer_data(struct buffer *b)
 {
-	return b->buffer + b->data_offset;
+    return b->buffer + b->data_offset;
 }
 
 void buffer_substract(struct buffer *b, int count)
 {
-	assert(count <= b->data_count);
-	b->data_count -= count;
-	b->data_offset += count;
-	if (b->data_count == 0) {
-		if (b->buffer_size > BUFFER_SIZE_MIN) {
-			free(b->buffer);
-			b->buffer = malloc(BUFFER_SIZE_MIN);
-			if (!b->buffer) {
+    assert(count <= b->data_count);
+    b->data_count -= count;
+    b->data_offset += count;
+    if (b->data_count == 0) {
+        if (b->buffer_size > BUFFER_SIZE_MIN) {
+            free(b->buffer);
+            b->buffer = malloc(BUFFER_SIZE_MIN);
+            if (!b->buffer) {
                 perror("malloc");
-				exit(1);
-			}
+                exit(1);
+            }
 
-		}
-		b->data_offset = 0;
-		b->buffer_size = BUFFER_SIZE_MIN;
-	}
+        }
+        b->data_offset = 0;
+        b->buffer_size = BUFFER_SIZE_MIN;
+    }
 }
