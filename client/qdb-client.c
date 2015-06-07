@@ -518,9 +518,9 @@ char **qdb_multiread(qdb_handle_t h, char *path,
     int count = 0;
     char *value;
     uint32_t got_data;
-    char **ret = NULL;
+    char **ret = NULL, **ret2;
     rw_ret_t read_ret;
-    unsigned int *len_ret = NULL;
+    unsigned int *len_ret = NULL, *len_ret2;
 
     if (!h)
         return NULL;
@@ -591,20 +591,24 @@ char **qdb_multiread(qdb_handle_t h, char *path,
 
         /* (path+value)*count + NULL,NULL
          * Note that count is still unchanged */
-        ret = realloc(ret, 2*(count+2)*sizeof(char*));
-        if (!ret) {
+        ret2 = realloc(ret, 2*(count+2)*sizeof(char*));
+        if (!ret2) {
+            free(ret);
             free(value);
             free(len_ret);
             return NULL;
         }
+        ret = ret2;
 
         if (values_len) {
-            len_ret = realloc(len_ret, (count+2)*sizeof(unsigned int));
-            if (!len_ret) {
+            len_ret2 = realloc(len_ret, (count+2)*sizeof(unsigned int));
+            if (!len_ret2) {
+                free(len_ret);
                 free(value);
                 free(ret);
                 return NULL;
             }
+            len_ret = len_ret2;
         }
 
         /* first path */
