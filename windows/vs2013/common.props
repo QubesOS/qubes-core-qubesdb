@@ -5,8 +5,8 @@
   <PropertyGroup>
     <IncludePath>$(QUBES_INCLUDES);$(SolutionDir)\..\..\include;$(IncludePath)</IncludePath>
     <LibraryPath>$(QUBES_LIBS);$(SolutionDir)\$(Configuration)\$(Platform);$(LibraryPath)</LibraryPath>
-    <OutDir>..\$(ConfigurationName)\$(Platform)\</OutDir>
-    <IntDir>..\$(ProjectName)\$(ConfigurationName)\$(Platform)\</IntDir>
+    <OutDir>$(SolutionDir)\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(SolutionDir)\$(ProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup>
@@ -21,7 +21,7 @@
     <CustomBuildStep>
       <Command>xcopy /y $(TargetPath) $(SolutionDir)\..\bin\$(PlatformTarget)\
 xcopy /y $(TargetDir)$(TargetName).pdb $(SolutionDir)\..\bin\$(PlatformTarget)\
-xcopy /y $(TargetDir)$(TargetName).lib $(SolutionDir)\..\bin\$(PlatformTarget)\</Command>
+if exist $(TargetDir)$(TargetName).lib xcopy /y $(TargetDir)$(TargetName).lib $(SolutionDir)\..\bin\$(PlatformTarget)\</Command>
     </CustomBuildStep>
     <CustomBuildStep>
       <Message>Copying output files</Message>

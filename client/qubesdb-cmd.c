@@ -1,7 +1,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#ifdef WINNT
+#include <windows.h>
+#include <getopt.h>
+#else
 #include <unistd.h>
+#endif
 
 #include <qubesdb-client.h>
 
@@ -20,8 +25,8 @@ enum {
 } qdb_cmd;
 
 void encode_and_print_value(char *val) {
-    int i;
-    int len;
+    size_t i;
+    size_t len;
 
     if (opt_raw) {
         printf("%s", val);
@@ -69,7 +74,7 @@ int cmd_multiread(qdb_handle_t h, int argc, char **args) {
     int i, j;
     char **path_value;
     int anything_failed = 0;
-    int basepath_len;
+    size_t basepath_len;
 
     for (i=0; i < argc; i++) {
         if (opt_fullpath)
@@ -107,7 +112,7 @@ int cmd_write(qdb_handle_t h, int argc, char **args) {
     }
 
     for (i = 0; i < argc; i += 2) {
-        if (!qdb_write(h, args[i], args[i+1], strlen(args[i+1]))) {
+        if (!qdb_write(h, args[i], args[i+1], (unsigned int)strlen(args[i+1]))) {
             if (!opt_quiet)
                 fprintf(stderr, "Failed to write %s\n", args[i]);
             anything_failed = 1;
@@ -133,7 +138,7 @@ int cmd_rm(qdb_handle_t h, int argc, char **args) {
 int cmd_list(qdb_handle_t h, int argc, char **args) {
     int i;
     char **paths;
-    int basepath_len;
+    size_t basepath_len;
 
     if (argc != 1) {
         fprintf(stderr, "LIST command accept only one path\n");
@@ -238,7 +243,12 @@ int main(int argc, char **argv) {
         do_cmd = parse_cmd(cmd_argv0);
     }
 
-    while ((opt = getopt(argc, argv, "hc:d:n:frq")) != -1) {
+#ifndef WINNT
+    while ((opt = getopt(argc, argv, "hc:d:n:frq")) != -1)
+#else
+    while ((opt = getopt(argc, argv, "hc:d:n:frq")) != 0)
+#endif
+    {
         switch (opt) {
             case 'c':
                 do_cmd = parse_cmd(optarg);
@@ -266,9 +276,11 @@ int main(int argc, char **argv) {
             case 'h':
                 usage(argv[0]);
                 exit(0);
+#ifndef WINNT
             default:
                 usage(argv[0]);
                 exit(1);
+#endif
         }
     }
 
@@ -280,7 +292,7 @@ int main(int argc, char **argv) {
     h = qdb_open(dest_domain);
     if (!h) {
         if (!opt_quiet)
-            fprintf(stderr, "Failed connect to %s daemon\n", dest_domain ? : "local");
+            fprintf(stderr, "Failed connect to %s daemon\n", dest_domain ? dest_domain : "local");
         exit(1);
     }
 
