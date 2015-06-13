@@ -5,6 +5,7 @@
 #include <Lmcons.h>
 #include <strsafe.h>
 #include <log.h>
+#include <qubes-io.h>
 #else
 #include <unistd.h>
 #include <sys/socket.h>
@@ -12,7 +13,6 @@
 #endif
 #include <assert.h>
 #include <errno.h>
-
 
 #include <qubesdb.h>
 #include <qubesdb-client.h>
@@ -35,8 +35,8 @@ struct path_list {
 
 struct qdb_handle {
 #ifdef WINNT
-    HANDLE fd;
-    OVERLAPPED fd_pending_io;
+    HANDLE read_pipe;
+    HANDLE write_pipe;
 #else
     int fd;
 #endif
@@ -59,14 +59,13 @@ void free_path_list(struct path_list *plist) {
 }
 
 #ifdef WINNT
-static HANDLE connect_to_daemon(char *vmname) {
-    WCHAR server_socket_path[MAX_FILE_NAME];
-    HANDLE fd;
-    ULONG   uResult;
+static int connect_to_daemon(struct qdb_handle *qh) {
+    WCHAR pipe_name[MAX_FILE_NAME];
+    ULONG status;
+    DWORD pid;
 
-    if (vmname && strcmp(vmname,"dom0") != 0) {
-        StringCbPrintf(server_socket_path, sizeof(server_socket_path),
-                QDB_DAEMON_PATH_PATTERN, vmname);
+    if (qh->vmname && strcmp(qh->vmname, "dom0") != 0) {
+        StringCbPrintf(pipe_name, sizeof(pipe_name), QDB_DAEMON_PATH_PATTERN, qh->vmname);
     } else {
 #ifdef BACKEND_VMM_wni
         /* on WNI we don't have separate namespace for each VM (all is in the
@@ -78,52 +77,65 @@ static HANDLE connect_to_daemon(char *vmname) {
             perror("GetUserName");
             return 0;
         }
-        StringCbPrintf(server_socket_path, sizeof(server_socket_path),
-                QDB_DAEMON_LOCAL_PATH, user_name);
+        StringCbPrintf(pipe_name, sizeof(pipe_name), QDB_DAEMON_LOCAL_PATH, user_name);
 #else
 
-        StringCbPrintf(server_socket_path, sizeof(server_socket_path),
-                QDB_DAEMON_LOCAL_PATH);
+        StringCbPrintf(pipe_name, sizeof(pipe_name), QDB_DAEMON_LOCAL_PATH);
 #endif
     }
 
-    // Try to open a named pipe; wait for it, if necessary.
-    while (TRUE) {
-        fd = CreateFile(
-                server_socket_path,
-                GENERIC_READ | GENERIC_WRITE,
-                0,
-                NULL,
-                OPEN_EXISTING,
-                0,
-                NULL);
-
-        // Break if the pipe handle is valid.
-
-        if (fd != INVALID_HANDLE_VALUE)
-            break;
+    // Try to open the read pipe; wait for it, if necessary.
+    do {
+        qh->read_pipe = CreateFile(pipe_name,
+                                   GENERIC_READ, // this is an inbound pipe
+                                   0,
+                                   NULL,
+                                   OPEN_EXISTING,
+                                   0,
+                                   NULL);
 
         // Exit if an error other than ERROR_PIPE_BUSY occurs.
-        uResult = GetLastError();
-        if (ERROR_PIPE_BUSY != uResult) {
-            perror("open qubesdb pipe");
-            return INVALID_HANDLE_VALUE;
+        status = GetLastError();
+        if (qh->read_pipe == INVALID_HANDLE_VALUE) {
+        if (ERROR_PIPE_BUSY != status) {
+            perror("open qubesdb read pipe");
+            return 0;
         }
-
-        // All pipe instances are busy, so wait for 10 seconds.
-
-        if (!WaitNamedPipe(server_socket_path, 10000)) {
-            perror("WaitNamedPipe");
-            return INVALID_HANDLE_VALUE;
+        // Wait until the pipe is available.
+        if (!WaitNamedPipe(pipe_name, NMPWAIT_WAIT_FOREVER)) {
+            perror("WaitNamedPipe(read)");
+            return 0;
         }
-    }
+        }
+    } while (qh->read_pipe == INVALID_HANDLE_VALUE);
 
-    return fd;
+    // Try to open the write pipe; wait for it, if necessary.
+    pid = GetCurrentProcessId();
+    StringCbPrintf(pipe_name, sizeof(pipe_name), L"%s-%d", QDB_DAEMON_LOCAL_PATH, pid);
+    do {
+        qh->write_pipe = CreateFile(pipe_name,
+                                    GENERIC_WRITE, // this is an outbound pipe
+                                    0,
+                                    NULL,
+                                    OPEN_EXISTING,
+                                    0,
+                                    NULL);
+
+        // This pipe may be not created yet
+        status = GetLastError();
+        if (qh->write_pipe == INVALID_HANDLE_VALUE && ERROR_FILE_NOT_FOUND != status) {
+            perror("open qubesdb write pipe");
+            return 0;
+        }
+        Sleep(10);
+    } while (qh->write_pipe == INVALID_HANDLE_VALUE);
+
+    return 1;
 }
 
 #else /* !WINNT */
 
-static int connect_to_daemon(char *vmname) {
+static int connect_to_daemon(struct qdb_handle *qh) {
     struct sockaddr_un remote;
     int len;
     int fd;
@@ -134,8 +146,8 @@ static int connect_to_daemon(char *vmname) {
     }
 
     remote.sun_family = AF_UNIX;
-    if (vmname) {
-        snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_PATH_PATTERN, vmname);
+    if (qh->vmname) {
+        snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_PATH_PATTERN, qh->vmname);
     } else {
         snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_LOCAL_PATH);
     }
@@ -144,12 +156,13 @@ static int connect_to_daemon(char *vmname) {
     if (connect(fd, (struct sockaddr *) &remote, len) == -1) {
         goto error;
     }
-    return fd;
+    qh->fd = fd;
+    return 1;
 
 error:
     if (fd >= 0)
         close(fd);
-    return -1;
+    return 0;
 }
 
 #endif /* !WINNT */
@@ -163,30 +176,30 @@ error:
  * @return 1 on success, 0 on failure
  */
 #ifdef WINNT
-static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
-        void *data) {
-    DWORD bytes_written;
-
+static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr, void *data) {
     /* if commands needs additional data, the last parameter must not be NULL
      */
     assert(data || hdr->data_len == 0);
     /* This function writes at most QDB_MAX_DATA bytes (3k) at once,
      * which is atomic on Linux */
-    if (!WriteFile(h->fd, hdr, sizeof(*hdr), &bytes_written, NULL)) {
+
+    if (!QioWriteBuffer(h->write_pipe, hdr, sizeof(*hdr))) {
         /* some fatal error on previous command (and daemon closed connection)
          * perhaps? or daemon has restarted */
         if (GetLastError() == ERROR_BROKEN_PIPE) {
             /* try to reconnect */
-            CloseHandle(h->fd);
-            h->fd = connect_to_daemon(h->vmname);
+            CloseHandle(h->read_pipe);
+            CloseHandle(h->write_pipe);
+            if (!connect_to_daemon(h))
             /* FIXME: register watches again */
-            if (h->fd == INVALID_HANDLE_VALUE)
                 /* reconnect failed */
                 return 0;
             else {
                 /* try again */
-                if (!WriteFile(h->fd, hdr, sizeof(*hdr), &bytes_written, NULL))
+                if (!QioWriteBuffer(h->write_pipe, hdr, sizeof(*hdr))) {
+                    perror("write to daemon");
                     return 0;
+                }
                 else
                     return 1;
             }
@@ -196,9 +209,10 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
             return 0;
         }
     }
-    if (data && !WriteFile(h->fd, data, hdr->data_len, &bytes_written, NULL)) {
+    if (data && !QioWriteBuffer(h->write_pipe, data, hdr->data_len)) {
         /* no recovery after header send, daemon most likely closed connection
          * in reaction to our data */
+        perror("write to daemon");
         return 0;
     }
     return 1;
@@ -208,15 +222,13 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
 
 static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
         void *data) {
-
     /* if commands needs additional data, the last parameter must not be NULL
      */
     assert(data || hdr->data_len == 0);
 
     /* try to reconnect if previous connection was severed */
     if (!h->connected) {
-        h->fd = connect_to_daemon(h->vmname);
-        if (h->fd == -1) {
+        if (!connect_to_daemon(h)) {
             /* reconnect failed */
             errno = EPIPE;
             return 0;
@@ -231,9 +243,8 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
         if (errno == EPIPE) {
             /* try to reconnect */
             close(h->fd);
-            h->fd = connect_to_daemon(h->vmname);
             /* FIXME: register watches again */
-            if (h->fd == -1) {
+            if (!connect_to_daemon(h)) {
                 /* reconnect failed */
                 h->connected = 0;
                 errno = EPIPE;
@@ -273,12 +284,7 @@ qdb_handle_t qdb_open(char *vmname) {
     else
         h->vmname = NULL;
 
-    h->fd = connect_to_daemon(vmname);
-#ifdef WINNT
-    if (h->fd == INVALID_HANDLE_VALUE)
-#else
-    if (h->fd < 0)
-#endif
+    if (!connect_to_daemon(h))
         goto error;
     h->connected = 1;
 
@@ -288,16 +294,17 @@ qdb_handle_t qdb_open(char *vmname) {
 
 error:
 #ifdef WINNT
-    if (h && h->fd != INVALID_HANDLE_VALUE)
-        CloseHandle(h->fd);
+    if (h->read_pipe != INVALID_HANDLE_VALUE)
+        CloseHandle(h->read_pipe);
+    if (h->write_pipe != INVALID_HANDLE_VALUE)
+        CloseHandle(h->write_pipe);
 #else
-    if (h && h->fd > -1)
+    if (h->fd > -1)
         close(h->fd);
 #endif
-    if (h && h->vmname)
+    if (h->vmname)
         free(h->vmname);
-    if (h)
-        free(h);
+    free(h);
     return NULL;
 }
 
@@ -309,8 +316,9 @@ void qdb_close(qdb_handle_t h) {
     free_path_list(h->watch_list);
     if (h->connected) {
 #ifdef WINNT
-        FlushFileBuffers(h->fd);
-        CloseHandle(h->fd);
+        FlushFileBuffers(h->write_pipe);
+        CloseHandle(h->write_pipe);
+        CloseHandle(h->read_pipe);
 #else
         shutdown(h->fd, SHUT_RDWR);
         close(h->fd);
@@ -327,7 +335,7 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
 
     do {
 #ifdef WINNT
-        if (!ReadFile(h->fd, hdr, sizeof(*hdr), &len, NULL))
+        if (!ReadFile(h->read_pipe, hdr, sizeof(*hdr), &len, NULL))
             return 0;
 #else
         len = read(h->fd, hdr, sizeof(*hdr));
@@ -336,7 +344,8 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
             if (len == 0) {
                 h->connected = 0;
 #ifdef WINNT
-                CloseHandle(h->fd);
+                CloseHandle(h->read_pipe);
+                h->read_pipe = INVALID_HANDLE_VALUE;
 #else
                 close(h->fd);
 #endif
@@ -414,8 +423,8 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
     got_data = 0;
     while (got_data < hdr.data_len) {
 #ifdef WINNT
-        if (!ReadFile(h->fd, value+got_data, hdr.data_len-got_data,
-                    &ret, NULL)) {
+        ret = hdr.data_len - got_data; // this function always reads the requested size
+        if (!QioReadBuffer(h->read_pipe, value+got_data, hdr.data_len-got_data)) {
 #else
         ret = read(h->fd, value+got_data, hdr.data_len-got_data);
         if (ret <= 0) {
@@ -575,7 +584,8 @@ char **qdb_multiread(qdb_handle_t h, char *path,
         got_data = 0;
         while (got_data < hdr.data_len) {
 #ifdef WINNT
-            if (!ReadFile(h->fd, value+got_data, hdr.data_len-got_data, &read_ret, NULL)) {
+            read_ret = hdr.data_len - got_data; // this function always reads the requested size
+            if (!QioReadBuffer(h->read_pipe, value+got_data, hdr.data_len-got_data)) {
 #else
             read_ret = read(h->fd, value+got_data, hdr.data_len-got_data);
             if (read_ret <= 0) {
@@ -766,7 +776,8 @@ char *qdb_read_watch(qdb_handle_t h) {
         free(w);
     } else {
 #ifdef WINNT
-        if (!ReadFile(h->fd, &hdr, sizeof(hdr), &len, NULL)) {
+        len = sizeof(hdr);
+        if (!QioReadBuffer(h->read_pipe, &hdr, sizeof(hdr))) {
 #else
         if ((len=read(h->fd, &hdr, sizeof(hdr))) < sizeof(hdr)) {
 #endif
