@@ -1,10 +1,15 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef WINNT
 #include <unistd.h>
+#else
+#define strdup _strdup
+#include <strsafe.h>
+#endif
 
 #include <qubesdb.h>
-#include <qubesdb_internal.h>
+#include "qubesdb_internal.h"
 
 struct qubesdb *qubesdb_init(send_watch_notify_t send_notify_func) {
     struct qubesdb *db;
@@ -82,7 +87,12 @@ struct qubesdb_entry *qubesdb_insert(struct qubesdb *db, char *path) {
         new_entry = malloc(sizeof(*new_entry));
         if (!new_entry)
             return NULL;
+#ifndef WINNT
         strncpy(new_entry->path, path, QDB_MAX_PATH);
+#else
+        StringCbCopyA(new_entry->path, sizeof(new_entry->path), path);
+#endif
+
         new_entry->value = NULL;
         new_entry->next = entry;
         new_entry->prev = entry->prev;
@@ -113,7 +123,7 @@ int qubesdb_remove(struct qubesdb *db, char *path) {
     int remove_dir, cmp_len;
     int anything_removed = 0;
 
-    cmp_len = strlen(path);
+    cmp_len = (int)strlen(path);
     /* check if requested whole dir remove */
     if (path[cmp_len-1] == '/') {
         remove_dir = 1;
@@ -151,8 +161,12 @@ int qubesdb_add_watch(struct qubesdb *db, char *path,
     db->watches = new_watch;
     new_watch->client = client;
     /* path already verified by caller */
+#ifndef WINNT
     strncpy(new_watch->path, path, QDB_MAX_PATH);
-    new_watch->cmp_len = strlen(path) + 1;
+#else
+    StringCbCopyA(new_watch->path, sizeof(new_watch->path), path);
+#endif
+    new_watch->cmp_len = (int)strlen(path) + 1;
     if (new_watch->cmp_len >= 2 && path[new_watch->cmp_len-2] == '/')
         new_watch->cmp_len--;
     return 1;
@@ -193,30 +207,24 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
     struct qubesdb_watch *watch;
     struct qdb_hdr hdr;
     int fired_anything = 0;
-#ifdef WINNT
-    OVERLAPPED ov;
-    DWORD written;
-#endif
 
     watch = db->watches;
     while (watch) {
         if (strncmp(watch->path, path, watch->cmp_len) == 0) {
             hdr.type = QDB_RESP_WATCH;
+#ifndef WINNT
             strncpy(hdr.path, path, sizeof(hdr.path));
-            hdr.data_len = 0;
-#ifdef WINNT
-            memset(&ov, 0, sizeof(ov));
-            if (!WriteFile(watch->client->fd, &hdr, sizeof(hdr), NULL, &ov) &&
-                GetLastError() != ERROR_IO_PENDING) {
-                fprintf(stderr, "Failed to fire watch on %s for client %p\n", path, watch->client->fd);
-            }
-            /* FIXME: leave asynchronous? */
-            GetOverlappedResult(watch->client_socket, &ov, &written, TRUE);
 #else
+            StringCbCopyA(hdr.path, sizeof(hdr.path), path);
+#endif
+            hdr.data_len = 0;
 
-            if (db->send_watch_notify && db->send_watch_notify(watch->client, (char*)&hdr, sizeof(hdr)) < 0) {
+#ifndef WINNT
+            if (db->send_watch_notify && db->send_watch_notify(watch->client, (char*)&hdr, sizeof(hdr)) < 0)
                 fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client->fd);
-            }
+#else
+            if (db->send_watch_notify && db->send_watch_notify(watch->client, (char*)&hdr, sizeof(hdr), db->pipe_server) < 0)
+                fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client->index);
 #endif
             fired_anything = 1;
         }

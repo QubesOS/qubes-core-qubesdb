@@ -4,30 +4,31 @@
 
 #include <libvchan.h>
 
+#ifndef WINNT
 #include "buffer.h"
-
-#ifdef WINNT
-typedef HANDLE client_socket_t;
-#define INVALID_CLIENT_SOCKET INVALID_HANDLE_VALUE
-#define CLIENT_SOCKET_FORMAT "%p"
-/* arbitrary numbers */
-#define PIPE_MAX_INSTANCES 16
-#define PIPE_TIMEOUT    5000
 #else
-typedef int client_socket_t;
-#define INVALID_CLIENT_SOCKET -1
-#define CLIENT_SOCKET_FORMAT "%d"
+#include <log.h>
+#include <pipe-server.h>
 #endif
 
+#ifndef WINNT
+typedef int client_socket_t;
+#define INVALID_CLIENT_SOCKET -1
 #define SERVER_SOCKET_BACKLOG 5
+#endif
 
+#define CLIENT_SOCKET_FORMAT "%d"
 #define QUBESDB_VCHAN_PORT 111
 
 #define MAX_FILE_PATH 256
 
 struct client;
 
+#ifndef WINNT
 typedef int (*send_watch_notify_t)(struct client *c, char *buf, size_t len);
+#else
+typedef int (*send_watch_notify_t)(struct client *c, char *buf, size_t len, PIPE_SERVER ps);
+#endif
 
 struct qubesdb_entry {
     struct qubesdb_entry *prev;
@@ -44,25 +45,24 @@ struct qubesdb_watch {
     struct client *client;
 };
 
-
 struct qubesdb {
     struct qubesdb_entry *entries;
     struct qubesdb_watch *watches;
     send_watch_notify_t send_watch_notify;
-};
-
-struct client {
-    struct client *next;
-    client_socket_t fd;
 #ifdef WINNT
-    int pending_io;
-    OVERLAPPED overlapped_read;
-    char read_buffer[sizeof(struct qdb_hdr)];
-#else
-    struct buffer *write_queue;
+    PIPE_SERVER pipe_server; // needed to communicate with clients
 #endif
 };
 
+struct client {
+#ifdef WINNT
+    DWORD index;
+#else
+    struct client *next;
+    client_socket_t fd;
+    struct buffer *write_queue;
+#endif
+};
 
 struct db_daemon_data {
     int remote_domid;           /* remote domain ID for vchan connection */
@@ -72,17 +72,16 @@ struct db_daemon_data {
                                  * processing requests (i.e. have
                                  * synchronised database */
 #ifdef WINNT
-    TCHAR socket_path[MAX_FILE_PATH]; /* socket path - Windows code needs at each connection */
-    HANDLE socket_inst;         /* socket instance prepared for the new client */
-    OVERLAPPED socket_inst_wait; /* pending ConnectToNewClient */
-    PSECURITY_DESCRIPTOR socket_sa; /* security settings for service socket */
+    PIPE_SERVER pipe_server;
+    SECURITY_ATTRIBUTES sa;
+    struct client clients[PS_MAX_CLIENTS];
 #else
     int socket_fd;              /* local server socket */
+    struct client *client_list; /* local clients */
 #endif
     struct qubesdb *db;         /* database */
     int multiread_requested;    /* have requested multiread, if not - drop such
                                    responses */
-    struct client *client_list; /* local clients */
 };
 
 struct qubesdb *qubesdb_init(send_watch_notify_t);
@@ -109,13 +108,12 @@ int handle_client_data(struct db_daemon_data *d, struct client *client,
                 char *data, int data_len);
 int handle_client_connect(struct db_daemon_data *d, struct client *client);
 int handle_client_disconnect(struct db_daemon_data *d, struct client *client);
+#ifndef WINNT
 int write_client_buffered(struct client *client, char *buf, size_t len);
+#else
+int send_watch_notify(struct client *c, char *buf, size_t len, PIPE_SERVER ps);
+#endif
 
 int request_full_db_sync(struct db_daemon_data *d);
-
-#ifdef WINNT
-#define perror winnt_perror
-void winnt_perror(char *func);
-#endif
 
 #endif /* _QUBESDB_INTERNAL_H */

@@ -1,22 +1,24 @@
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <fcntl.h>
+#include <errno.h>
 #ifndef WINNT
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <signal.h>
+#include "buffer.h"
 #else
 #include <windows.h>
 #include <sddl.h>
 #include <Lmcons.h>
-#include <tchar.h>
+#include <strsafe.h>
+
+#include <log.h>
+#include <pipe-server.h>
 #endif
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <signal.h>
-#include <errno.h>
-#include "buffer.h"
 
 #ifndef WINNT
 /* For now link with systemd unconditionaly (all Fedora versions are using it,
@@ -25,83 +27,32 @@
  * getenv("NOTIFY_SOCKET").
  */
 #include <systemd/sd-daemon.h>
-#endif
-
-#ifdef WINNT
-/* on Linux we have systemd or other redirection from startup script, but on
- * Windows we haven't - so log directly to file.
- * Service should be started with user profile as working directory, so we can
- * safely use relative path (especially useful for WNI)
- */
-#define USE_LOGFILE
-#define LOGFILE_PATH "qubesdb.log"
+#else // !WINNT
+// parameters for a client pipe thread
+struct thread_param {
+    struct db_daemon_data *daemon;
+    DWORD index;
+};
 #endif
 
 #include <qubesdb.h>
 #include "qubesdb_internal.h"
 
-int sigterm_received = 0;
-
 int init_vchan(struct db_daemon_data *d);
 
-void sigterm_handler(int s) {
+#ifndef WINNT
+int sigterm_received = 0;
+void sigterm_handler(int s)
+{
     sigterm_received = 1;
 }
-
-#ifdef WINNT
-/** Helper function to report errors. Similar to perror, but uses GetLastError() instead of errno
- * @param prefix Error message prefix
- */
-void winnt_perror(char *prefix) {
-    size_t  cchErrorTextSize;
-    PUCHAR  pMessage = NULL;
-    char   szMessage[2048];
-    int     ret;
-    ULONG   uErrorCode;
-
-    uErrorCode = GetLastError();
-
-    memset(szMessage, 0, sizeof(szMessage));
-    cchErrorTextSize = FormatMessageA(
-            FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
-            NULL,
-            uErrorCode,
-            MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-            (LPSTR)&pMessage,
-            0,
-            NULL);
-    if (!cchErrorTextSize) {
-        if (!snprintf(szMessage, RTL_NUMBER_OF(szMessage), " failed with error %d\n", uErrorCode))
-            return;
-    } else {
-
-        ret = snprintf(
-                szMessage,
-                RTL_NUMBER_OF(szMessage),
-                " failed with error %d: %s%s",
-                uErrorCode,
-                pMessage,
-                ((cchErrorTextSize >= 1) && (0x0a == pMessage[cchErrorTextSize - 1])) ? "" : "\n");
-        LocalFree(pMessage);
-
-        if (!ret)
-            return;
-    }
-
-    fprintf(stderr, "%s%s", prefix, szMessage);
-}
-#endif
 
 /** Register new client
  * @param d Daemon global data
  * @param c Socket of new client
  * @return 1 on success, 0 on failure
  */
-int add_client(struct db_daemon_data *d, client_socket_t c
-#ifdef WINNT
-        , HANDLE socket_event
-#endif
-        ) {
+int add_client(struct db_daemon_data *d, client_socket_t c) {
     struct client *client;
 
     client = malloc(sizeof(*client));
@@ -110,18 +61,13 @@ int add_client(struct db_daemon_data *d, client_socket_t c
         return 0;
     }
     client->fd = c;
-#ifdef WINNT
-    client->pending_io = 0;
-    memset(&client->overlapped_read, 0, sizeof(client->overlapped_read));
-    client->overlapped_read.hEvent = socket_event;
-#else
+
     client->write_queue = buffer_create();
     if (!client->write_queue) {
         fprintf(stderr, "ERROR: cannot allocate memory for new client buffer\n");
         free(client);
         return 0;
     }
-#endif
     client->next = d->client_list;
     d->client_list = client;
 
@@ -139,13 +85,8 @@ int disconnect_client(struct db_daemon_data *d, struct client *c) {
     if (!handle_client_disconnect(d, c))
         return 0;
 
-#ifdef WINNT
-    DisconnectNamedPipe(c->fd);
-    CloseHandle(c->fd);
-#else
     close(c->fd);
     buffer_free(c->write_queue);
-#endif
 
     client = d->client_list;
     prev_client = NULL;
@@ -165,97 +106,15 @@ int disconnect_client(struct db_daemon_data *d, struct client *c) {
     return 1;
 }
 
-#ifdef WINNT
-/** Prepare server socket for new client connection
- * @param d Daemon global data
- * @return 1 on success, 0 on failure
- */
-static int prepare_socket_for_new_client(struct db_daemon_data *d) {
-
-    if (!d->socket_sa) {
-        if (!ConvertStringSecurityDescriptorToSecurityDescriptor(
-                    //TEXT("S:(ML;;NW;;;LW)D:(A;;FA;;;SY)(A;;FA;;;CO)"),
-                    TEXT("D:(A;;FA;;;SY)(A;;FA;;;CO)"),
-                    SDDL_REVISION_1,
-                    &d->socket_sa,
-                    NULL)) {
-            perror("ConvertStringSecurityDescriptorToSecurityDescriptor");
-            return 0;
-        }
-    }
-
-    d->socket_inst = CreateNamedPipe(
-            d->socket_path,
-            PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED,
-            PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
-            PIPE_MAX_INSTANCES,
-            4096, // output buffer size
-            4096, // input buffer size
-            PIPE_TIMEOUT, // client time-out
-            d->socket_sa);
-    if (d->socket_inst == INVALID_HANDLE_VALUE) {
-        perror("CreateNamedPipe");
-        return 0;
-    }
-
-    memset(&d->socket_inst_wait, 0, sizeof(OVERLAPPED));
-    d->socket_inst_wait.hEvent = CreateEvent(
-            NULL, // default security attribute
-            FALSE, // auto-reset event
-            FALSE, // initial state = not signaled
-            NULL); // unnamed event object
-
-    if (d->socket_inst_wait.hEvent == INVALID_HANDLE_VALUE) {
-        CloseHandle(d->socket_inst);
-        perror("CreateEvent");
-        return 0;
-    }
-
-    if (!ConnectNamedPipe(d->socket_inst, &d->socket_inst_wait)) {
-        switch (GetLastError()) {
-            case ERROR_IO_PENDING:
-                break;
-            case ERROR_PIPE_CONNECTED:
-                SetEvent(d->socket_inst_wait.hEvent);
-                break;
-            default:
-                CloseHandle(d->socket_inst);
-                CloseHandle(d->socket_inst_wait.hEvent);
-                perror("ConnectNamedPipe");
-                return 0;
-        }
-    }
-    return 1;
-}
-#endif /* WINNT */
-
-
 /** Receive new client connection and register such client
  * @param d Daemon global data
  * @return 1 on success, 0 on failure
  */
 int accept_new_client(struct db_daemon_data *d) {
     client_socket_t new_client_fd;
-#ifndef WINNT
     struct sockaddr_un peer;
     unsigned int addrlen;
-#else
-    HANDLE socket_event;
-    DWORD unused;
-#endif
 
-#ifdef WINNT
-    new_client_fd = d->socket_inst;
-    /* reuse already created event object */
-    socket_event = d->socket_inst_wait.hEvent;
-    if (!GetOverlappedResult(d->socket_inst, &d->socket_inst_wait, &unused, FALSE)) {
-        perror("ConnectToNewClient");
-        exit(1);
-    }
-    if (!prepare_socket_for_new_client(d))
-        exit(1);
-    return add_client(d, new_client_fd, socket_event);
-#else /* !WINNT */
     addrlen = sizeof(peer);
     new_client_fd = accept(d->socket_fd, (struct sockaddr *) &peer, &addrlen);
     if (new_client_fd == -1) {
@@ -263,72 +122,61 @@ int accept_new_client(struct db_daemon_data *d) {
         exit(1);
     }
     return add_client(d, new_client_fd);
-#endif /* !WINNT */
 }
 
-#ifdef WINNT
-/* read_events must be large enough - at least client count + 2 */
-int fill_events_for_wait(struct db_daemon_data *d,
-        HANDLE * read_events) {
-    struct client *client;
-    int max_ev = 0;
+#else // !WINNT
 
-    read_events[max_ev++] = d->socket_inst_wait.hEvent;
-    if (d->vchan) {
-        read_events[max_ev++] = libvchan_fd_for_select(d->vchan);
-    }
+/* Main pipe server processing loop (separate thread).
+ * Takes care of accepting clients and receiving data.
+ */
+DWORD WINAPI pipe_thread_main(PVOID param) {
+    PIPE_SERVER ps = (PIPE_SERVER)param;
 
-    client = d->client_list;
-    while (client) {
-        if (!client->pending_io) {
-            if (!ReadFile(client->fd, client->read_buffer,
-                        sizeof(struct qdb_hdr), NULL, &client->overlapped_read)) {
-                if (GetLastError() != ERROR_IO_PENDING) {
-                    /* TODO: remove the client? */
-                    client = client->next;
-                    continue;
-                }
-            }
-            client->pending_io = 1;
-        }
-        read_events[max_ev++] = client->overlapped_read.hEvent;
-        client = client->next;
-    }
-    return max_ev;
+    // only returns on error
+    return QpsMainLoop(ps);
 }
 
 int mainloop(struct db_daemon_data *d) {
-    struct client *client;
-    int event_count;
-    HANDLE read_events[QDB_MAX_CLIENTS+2];
-    int ret;
+    DWORD ret;
+    DWORD status;
+    HANDLE pipe_thread;
+    HANDLE wait_objects[2];
 
+    // Create the thread that will handle client pipes
+    pipe_thread = CreateThread(NULL, 0, pipe_thread_main, d->pipe_server, 0, NULL);
+    if (!pipe_thread) {
+        perror("CreateThread(main pipe thread)");
+        return 0;
+    }
+
+    // We'll wait for the pipe thread to exit, if it terminates
+    // we're going down as well.
+    wait_objects[0] = pipe_thread;
+
+    // This loop will just process vchan data.
     while (1) {
-        event_count = fill_events_for_wait(d, read_events);
-
+        wait_objects[1] = libvchan_fd_for_select(d->vchan);
         /* TODO: add one more event for service termination */
-        ret = WaitForMultipleObjects(event_count, read_events, FALSE, INFINITE);
-        if (ret >= event_count) {
-            /* client could have disconnected just before select call, so
-             * ignore this error and retry
-             * FIXME: This probably will loop indefinitelly */
-            /* TODO: implement above comment */
-            perror("WaitForMultipleObjects");
-            break;
+        ret = WaitForMultipleObjects(2, wait_objects, FALSE, INFINITE) - WAIT_OBJECT_0;
+
+        switch (ret) {
+        case 0: {
+            // pipe thread terminated, abort
+            GetExitCodeThread(pipe_thread, &status);
+            perror2(status, "pipe thread");
+            return 0;
         }
 
-        if (d->vchan) {
-            if (WaitForSingleObject(libvchan_fd_for_select(d->vchan), 0)
-                    == WAIT_OBJECT_0)
-                libvchan_wait(d->vchan);
+        case 1: {
+            // vchan read
             if (d->remote_connected && !libvchan_is_open(d->vchan)) {
                 fprintf(stderr, "vchan closed\n");
                 if (!d->remote_name) {
                     /* In the VM, wait for possible qubesdb-daemon dom0 restart.
-                     * This can be a case for DispVM  */
+                    * This can be a case for DispVM  */
                     /* FIXME: in such case dom0 daemon will have no entries
-                     * currently present in VM instance; perhaps we should
-                     * clear VM instance? */
+                    * currently present in VM instance; perhaps we should
+                    * clear VM instance? */
                     if (!init_vchan(d)) {
                         fprintf(stderr, "vchan reconnection failed\n");
                         break;
@@ -336,7 +184,7 @@ int mainloop(struct db_daemon_data *d) {
                     /* request database sync from dom0 */
                     if (!request_full_db_sync(d)) {
                         fprintf(stderr, "FATAL: failed to request DB sync\n");
-                        exit(1);
+                        return 0;
                     }
                     d->multiread_requested = 1;
                 } else {
@@ -344,79 +192,123 @@ int mainloop(struct db_daemon_data *d) {
                 }
                 break;
             }
-            if (d->remote_connected || libvchan_is_open(d->vchan) == 1)
+
+            if (d->remote_connected || libvchan_is_open(d->vchan)) {
                 while (libvchan_data_ready(d->vchan)) {
                     if (!handle_vchan_data(d)) {
                         fprintf(stderr, "FATAL: vchan data processing failed\n");
-                        exit(1);
+                        return 0;
                     }
                 }
-        }
-
-        /* check if there is some data from a client
-         * 0 - listening "socket"
-         * 1 - vchan event (if connected)
-         */
-        if (ret > 0 && (!d->vchan || ret > 1)) {
-            client = d->client_list;
-            while (client) {
-                if (client->pending_io && read_events[ret] == client->overlapped_read.hEvent) {
-                    DWORD got_bytes;
-                    struct client *client_to_remove = NULL;
-                    if (!GetOverlappedResult(client->fd, &client->overlapped_read, &got_bytes, FALSE)) {
-                        perror("client read");
-                        client_to_remove = client->fd;
-                    }
-                    client->pending_io = 0;
-                    if (!handle_client_data(d, client, client->read_buffer, got_bytes)) {
-                        client_to_remove = client;
-                    }
-                    if (client_to_remove) {
-                        client = client->next;
-                        disconnect_client(d, client_to_remove);
-                        continue;
-                    }
-                }
-                client = client->next;
             }
+            break;
         }
 
-        if (ret == 0) {
-            accept_new_client(d);
+        default: {
+            // wait failed
+            perror("WaitForMultipleObjects");
+            return 0;
+        }
         }
     }
     return 1;
 }
 
+DWORD WINAPI pipe_thread_client(PVOID param) {
+    struct thread_param *p = param;
+    struct client c;
+    struct qdb_hdr hdr;
+    DWORD status;
 
-int init_server_socket(struct db_daemon_data *d) {
-    /* In dom0 listen only on "local" socket */
-    if (d->remote_name && d->remote_domid != 0) {
-        _stprintf_s(d->socket_path, MAX_FILE_PATH,
-                QDB_DAEMON_PATH_PATTERN, d->remote_name);
-    } else {
-#ifdef BACKEND_VMM_wni
-        /* on WNI we don't have separate namespace for each VM (all is in the
-         * single system) */
-        DWORD user_name_len = UNLEN + 1;
-        TCHAR user_name[user_name_len];
+    c.index = p->index;
 
-        if (!GetUserName(user_name, &user_name_len)) {
-            perror("GetUserName");
-            return 0;
+    while (1) {
+        // blocking read
+        status = QpsRead(p->daemon->pipe_server, p->index, &hdr, sizeof(hdr));
+        if (ERROR_SUCCESS != status) {
+            perror("QpsRead");
+            LogWarning("read from client %lu failed", p->index);
+            return status;
         }
-        _stprintf_s(d->socket_path, MAX_FILE_PATH,
-                QDB_DAEMON_LOCAL_PATH, user_name);
-#else
-        _stprintf_s(d->socket_path, MAX_FILE_PATH,
-                QDB_DAEMON_LOCAL_PATH);
-#endif
-    }
 
-    return prepare_socket_for_new_client(d);
+        if (!handle_client_data(p->daemon, &c, (char*)&hdr, sizeof(hdr))) {
+            LogWarning("handle_client_data failed, disconnecting client %lu", p->index);
+            // FIXME: disconnect the client
+        }
+    }
 }
 
-#else /* !WINNT */
+void client_connected_callback(PIPE_SERVER server, DWORD index, PVOID context) {
+    HANDLE client_thread;
+    struct thread_param *param;
+
+    param = malloc(sizeof(struct thread_param));
+    if (!param) {
+        LogError("no memory");
+        // FIXME: disconnect the client
+        return;
+    }
+
+    param->index = index;
+    param->daemon = context;
+    client_thread = CreateThread(NULL, 0, pipe_thread_client, param, 0, NULL);
+    if (!client_thread) {
+        perror("CreateThread");
+        free(param);
+        return;
+    }
+    CloseHandle(client_thread);
+    // the client thread will take care of processing client's data
+}
+
+int init_server_socket(struct db_daemon_data *d) {
+    WCHAR pipe_name[MAX_FILE_PATH];
+    PSECURITY_DESCRIPTOR sd = NULL;
+    DWORD status;
+
+    /* In dom0 listen only on "local" socket */
+    if (d->remote_name && d->remote_domid != 0) {
+        StringCbPrintfW(pipe_name, sizeof(pipe_name), QDB_DAEMON_PATH_PATTERN, d->remote_name);
+    } else {
+        StringCbPrintfW(pipe_name, sizeof(pipe_name), QDB_DAEMON_LOCAL_PATH);
+    }
+ /*
+    if (!ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        //TEXT("S:(ML;;NW;;;LW)D:(A;;FA;;;SY)(A;;FA;;;CO)"),
+        L"D:(A;;FA;;;SY)(A;;FA;;;CO)",
+        SDDL_REVISION_1,
+        &sd,
+        NULL)) {
+        perror("ConvertStringSecurityDescriptorToSecurityDescriptor");
+        return 0;
+    }
+
+    d->sa.lpSecurityDescriptor = sd;
+    d->sa.bInheritHandle = FALSE;
+    d->sa.nLength = sizeof(d->sa);
+*/
+    LogDebug("pipe: %s", pipe_name);
+    status = QpsCreate(pipe_name,
+                             4096, // pipe buffers
+                             1024 * 1024, // read buffer
+                             1000, // write timeout
+                             client_connected_callback,
+                             NULL,
+                             NULL,
+                             d, // context
+                             NULL,//&d->sa,
+                             &d->pipe_server);
+
+    return status == ERROR_SUCCESS;
+}
+
+void close_server_socket(struct db_daemon_data *d) {
+    QpsDestroy(d->pipe_server);
+    d->pipe_server = NULL;
+}
+#endif // WINNT
+
+#ifndef WINNT
 
 int fill_fdsets_for_select(struct db_daemon_data *d,
         fd_set * read_fdset, fd_set * write_fdset) {
@@ -462,7 +354,7 @@ int mainloop(struct db_daemon_data *d) {
 
     sigemptyset(&sigterm_mask);
     sigaddset(&sigterm_mask, SIGTERM);
-    
+
     while (1) {
         max_fd = fill_fdsets_for_select(d, &read_fdset, &write_fdset);
 
@@ -594,11 +486,10 @@ int init_server_socket(struct db_daemon_data *d) {
     umask(old_umask);
     return 1;
 }
- 
+
 #endif /* !WINNT */
 
 int init_vchan(struct db_daemon_data *d) {
-
     if (d->vchan) {
         libvchan_close(d->vchan);
         d->vchan = NULL;
@@ -624,6 +515,7 @@ int init_vchan(struct db_daemon_data *d) {
     return 1;
 }
 
+#ifndef WINNT
 int create_pidfile(struct db_daemon_data *d) {
     char pidfile_name[256];
     FILE *pidfile;
@@ -659,8 +551,8 @@ void remove_pidfile(struct db_daemon_data *d) {
     unlink(pidfile_name);
 }
 
-void close_server_socket(struct db_daemon_data *d) {
-#ifndef WINNT
+void close_server_socket(struct db_daemon_data *d)
+{
     struct sockaddr_un sockname;
     socklen_t addrlen;
 
@@ -674,16 +566,8 @@ void close_server_socket(struct db_daemon_data *d) {
 
     close(d->socket_fd);
     unlink(sockname.sun_path);
-#else
-    if (d->socket_inst != INVALID_HANDLE_VALUE) {
-        /* cancel ConnectNamedPipe */
-        CancelIo(d->socket_inst);
-        CloseHandle(d->socket_inst);
-        LocalFree(d->socket_sa);
-        d->socket_sa = NULL;
-    }
-#endif
 }
+#endif
 
 void usage(char *argv0) {
     fprintf(stderr, "Usage: %s <remote-domid> [<remote-name>]\n", argv0);
@@ -692,8 +576,8 @@ void usage(char *argv0) {
 
 int main(int argc, char **argv) {
     struct db_daemon_data d;
-    int ready_pipe[2] = {0, 0};
 #ifndef WINNT
+    int ready_pipe[2] = {0, 0};
     pid_t pid;
 #endif
     int ret;
@@ -760,65 +644,30 @@ int main(int argc, char **argv) {
 
     /* setup graceful shutdown handling */
     signal(SIGTERM, sigterm_handler);
-#else /* WINNT */
-    /* start new process in the background and use the pipe to communicate with
-     * it;
-     * do this only in "dom0", VM process is already started as detached/service
-     */
-    if (d.remote_name) {
-        if (argc < 4) {
-            /* parent process */
-            char buf[6];
-            char own_path[256]; // MAX_PATH
-            int own_path_len;
-
-            if (!(own_path_len=GetModuleFileNameA(NULL,
-                            own_path, sizeof(own_path)))) {
-                perror("GetModuleFileName");
-                exit(1);
-            }
-
-            if (_pipe(ready_pipe, 256 /* buffer size */, O_BINARY) == -1) {
-                perror("_pipe");
-                exit(1);
-            }
-
-            snprintf(buf, sizeof(buf), "%d", ready_pipe[1]);
-            if (_spawnl(P_NOWAIT, own_path, "qubesdb-daemon", argv[1],
-                        d.remote_name ? d.remote_name : "",
-                        buf, NULL) < 0) {
-                perror(own_path);
-                exit(1);
-            }
-            close(ready_pipe[1]);
-            if (read(ready_pipe[0], buf, sizeof(buf)) < strlen("ready")) {
-                fprintf(stderr, "startup failed\n");
-                exit(1);
-            }
-            exit(0);
-        } else {
-            ready_pipe[1] = atoi(argv[3]);
-            FreeConsole();
-        }
-    }
 #endif
 
-#ifdef USE_LOGFILE
-    /* ignore errors - no place to report them, just leave stderr connected to
-     * the terminal(?) */
-    freopen(LOGFILE_PATH, "a", stderr);
-#endif
-
+#ifndef WINNT
     d.db = qubesdb_init(write_client_buffered);
+#else
+    d.db = qubesdb_init(send_watch_notify);
+#endif
     if (!d.db) {
         fprintf(stderr, "FATAL: database initialization failed\n");
         exit(1);
     }
 
+#ifdef WINNT
+    d.db->pipe_server = d.pipe_server;
+#endif
+
     if (!init_server_socket(&d)) {
         fprintf(stderr, "FATAL: server socket initialization failed\n");
         exit(1);
     }
+
+#ifdef WINNT
+    d.db->pipe_server = d.pipe_server;
+#endif
 
     if (!init_vchan(&d)) {
         fprintf(stderr, "FATAL: vchan initialization failed\n");
@@ -853,11 +702,6 @@ int main(int argc, char **argv) {
     }
 
     create_pidfile(&d);
-#else /* WINNT */
-    if (d.remote_name) {
-        write(ready_pipe[1], "ready", strlen("ready"));
-        close(ready_pipe[1]);
-    }
 #endif
 
     ret = !mainloop(&d);

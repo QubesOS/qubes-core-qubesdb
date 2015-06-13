@@ -1,14 +1,17 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <assert.h>
 #ifdef WINNT
 #include <windows.h>
-#endif
+#include <strsafe.h>
 
+#include <qubes-io.h>
+#else
+#include <unistd.h>
+#endif
 
 #include <libvchan.h>
 
@@ -26,7 +29,7 @@ int verify_path(char *path) {
     int i;
     int path_len;
 
-    path_len = strlen(path);
+    path_len = (int)strlen(path);
     if (path_len >= QDB_MAX_PATH)
         return 0;
     for (i = 0; i < path_len; i++) {
@@ -106,12 +109,14 @@ int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
     return 1;
 }
 
-/* write to either client given by fd parameter or vchan if 
+/* write to either client given by fd parameter or vchan if
  * fd == NULL
  */
 int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
+#ifndef WINNT
     int ret, count;
+#endif
 
     if (c == NULL) {
         /* vchan */
@@ -134,44 +139,30 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
             }
             buffer_substract(c->write_queue, ret);
         }
-#endif
 
         count = 0;
         while (count < data_len) {
-#ifdef WINNT
-            OVERLAPPED ov;
-            DWORD got_bytes;
-            ov.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-            if (!WriteFile(c->fd, data, data_len, NULL, &ov)) {
-                if (GetLastError() != ERROR_IO_PENDING) {
-                    perror("client write");
-                    CloseHandle(ov.hEvent);
-                    return 0;
-                }
-            }
-            if (!GetOverlappedResult(c->fd, &ov, &got_bytes, TRUE)) {
-                perror("client write");
-                CloseHandle(ov.hEvent);
-                return 0;
-            }
-            CloseHandle(ov.hEvent);
-            ret = got_bytes;
-#else
             ret = write(c->fd, data+count, data_len-count);
             if (ret < 0) {
                 perror("client write");
                 return 0;
             }
-#endif
             count += ret;
         }
+#else // !WINNT
+        DWORD status = QpsWrite(d->pipe_server, c->index, data, data_len);
+        if (status != ERROR_SUCCESS)
+            return 0;
+#endif
         return 1;
     }
 }
 
 int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
+#ifndef WINNT
     int ret, count;
+#endif
 
     if (data_len == 0)
         /* nothing to do */
@@ -188,28 +179,10 @@ int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
         }
         return 1;
     } else {
+#ifndef WINNT
         count = 0;
         while (count < data_len) {
-#ifdef WINNT
-            OVERLAPPED ov;
-            DWORD written_bytes;
-            ov.hEvent = CreateEvent(NULL, FALSE, FALSE, NULL);
-            if (!ReadFile(c->fd, data, data_len, NULL, &ov)) {
-                if (GetLastError() != ERROR_IO_PENDING) {
-                    perror("client read");
-                    CloseHandle(ov.hEvent);
-                    return 0;
-                }
-            }
-            if (!GetOverlappedResult(c->fd, &ov, &written_bytes, TRUE)) {
-                perror("client read");
-                CloseHandle(ov.hEvent);
-                return 0;
-            }
-            CloseHandle(ov.hEvent);
-            ret = written_bytes;
-#else
-            ret = read(c->fd, data+count, data_len-count);
+            ret = read(c->fd, data + count, data_len - count);
             if (ret < 0) {
                 if (errno == ECONNRESET)
                     return 0;
@@ -219,9 +192,13 @@ int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
             /* EOF */
             if (ret == 0)
                 return 0;
-#endif
             count += ret;
         }
+#else // !WINNT
+        DWORD status = QpsRead(d->pipe_server, c->index, data, data_len);
+        if (status != ERROR_SUCCESS)
+            return 0;
+#endif
         return 1;
     }
 }
@@ -256,7 +233,6 @@ int discard_data(struct db_daemon_data *d, struct client *client, int amount) {
  */
 int discard_data_and_send_error(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
-
     if (discard_data(d, client, hdr->data_len)) {
         hdr->type = QDB_RESP_ERROR;
         hdr->data_len = 0;
@@ -266,6 +242,7 @@ int discard_data_and_send_error(struct db_daemon_data *d, struct client *client,
     return 0;
 }
 
+#ifndef WINNT
 /** Send data to a client, but in non-blocking way - if write would block,
  * buffer the data instead
  * @param client Client connection
@@ -323,6 +300,15 @@ out:
     }
     return ret;
 }
+#else // !WINNT
+int send_watch_notify(struct client *c, char *buf, size_t len, PIPE_SERVER ps)
+{
+    DWORD status = QpsWrite(ps, c->index, buf, (DWORD)len);
+    if (status != ERROR_SUCCESS)
+        return 0;
+    return 1;
+}
+#endif
 
 /** Handle 'write' command. Modify the database and send notification to other
  * vchan side (if command received from local client). After modification (and
@@ -393,7 +379,6 @@ int handle_write(struct db_daemon_data *d, struct client *client,
 /* this command is valid on both client socket and vchan */
 int handle_rm(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
-
     if (hdr->data_len > 0) {
         fprintf(stderr, "CMD_RM shouldn't have data field\n");
         /* recovery path */
@@ -424,8 +409,7 @@ int handle_rm(struct db_daemon_data *d, struct client *client,
     return 1;
 }
 
-
-/** Handle 'read' command. 
+/** Handle 'read' command.
  * This command is only valid local socket.
  * @param d Daemon global data
  * @param client Client connection (NULL means vchan)
@@ -487,8 +471,12 @@ int handle_multiread(struct db_daemon_data *d, struct client *client,
         return discard_data_and_send_error(d, client, hdr);
     }
 
+#ifndef WINNT
     strncpy(search_path, hdr->path, QDB_MAX_PATH);
-    search_path_len = strlen(search_path);
+#else
+    StringCbCopyA(search_path, sizeof(search_path), hdr->path);
+#endif
+    search_path_len = (int)strlen(search_path);
 
     hdr->type = QDB_RESP_MULTIREAD;
 
@@ -501,7 +489,11 @@ int handle_multiread(struct db_daemon_data *d, struct client *client,
     }
     while (db_entry != d->db->entries &&
              strncmp(db_entry->path, search_path, search_path_len) == 0) {
+#ifndef WINNT
         strncpy(hdr->path, db_entry->path, sizeof(hdr->path));
+#else
+        StringCbCopyA(hdr->path, sizeof(hdr->path), db_entry->path);
+#endif
         hdr->data_len = db_entry->value_len;
         if (!write_vchan_or_client(d, client, (char*)hdr, sizeof(*hdr)))
             return 0;
@@ -543,15 +535,23 @@ int handle_list(struct db_daemon_data *d, struct client *client,
         return discard_data_and_send_error(d, client, hdr);
     }
 
+#ifndef WINNT
     strncpy(search_path, hdr->path, QDB_MAX_PATH);
-    search_path_len = strlen(search_path);
+#else
+    StringCbCopyA(search_path, sizeof(search_path), hdr->path);
+#endif
+    search_path_len = (int)strlen(search_path);
 
     hdr->type = QDB_RESP_LIST;
 
     db_entry = qubesdb_search(d->db, search_path, 0);
-    while (db_entry != d->db->entries && 
+    while (db_entry != d->db->entries &&
              strncmp(db_entry->path, search_path, search_path_len) == 0) {
+#ifndef WINNT
         strncpy(hdr->path, db_entry->path, sizeof(hdr->path));
+#else
+        StringCbCopyA(hdr->path, sizeof(hdr->path), db_entry->path);
+#endif
         hdr->data_len = 0;
         if (!write_vchan_or_client(d, client, (char*)hdr, sizeof(*hdr)))
             return 0;
@@ -600,7 +600,6 @@ int handle_vchan_multiread_resp(struct db_daemon_data *d, struct qdb_hdr *hdr) {
     qubesdb_fire_watches(d->db, hdr->path);
     return 1;
 }
-
 
 /** Handle new vchan command. This functions is called every time when any new
  * vchan command is detected (but not yet read). It receives data from other
@@ -695,11 +694,14 @@ int handle_client_data(struct db_daemon_data *d, struct client *client,
 
     if (!verify_hdr(&hdr, 0)) {
         fprintf(stderr, "invalid message received from client "
+#ifndef WINNT
                 CLIENT_SOCKET_FORMAT "\n", client->fd);
+#else
+                CLIENT_SOCKET_FORMAT "\n", client->index);
+#endif
         /* recovery path */
         return discard_data_and_send_error(d, client, &hdr);
     }
-
 
     switch (hdr.type) {
         case QDB_CMD_READ:
@@ -765,6 +767,6 @@ int request_full_db_sync(struct db_daemon_data *d) {
     hdr.type = QDB_CMD_MULTIREAD;
     hdr.path[0] = 0;
     hdr.data_len = 0;
-    
+
     return write_vchan_or_client(d, NULL, (char*)&hdr, sizeof(hdr));
 }
