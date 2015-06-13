@@ -296,6 +296,8 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
+	optind -= 2;
+	printf("argc %d, optind %d\n", argc, optind);
     switch (do_cmd) {
         case DO_READ:
             ret = cmd_read(h, argc-optind, argv+optind);
