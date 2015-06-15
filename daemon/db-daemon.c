@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
-#ifndef WINNT
+#ifndef WIN32
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -20,14 +20,14 @@
 #include <pipe-server.h>
 #endif
 
-#ifndef WINNT
+#ifndef WIN32
 /* For now link with systemd unconditionaly (all Fedora versions are using it,
  * Archlinux also). But if someone needs no systemd in dependencies,
  * it can be easily turned off, check the code in main() - conditions on
  * getenv("NOTIFY_SOCKET").
  */
 #include <systemd/sd-daemon.h>
-#else // !WINNT
+#else // !WIN32
 // parameters for a client pipe thread
 struct thread_param {
     struct db_daemon_data *daemon;
@@ -40,7 +40,7 @@ struct thread_param {
 
 int init_vchan(struct db_daemon_data *d);
 
-#ifndef WINNT
+#ifndef WIN32
 int sigterm_received = 0;
 void sigterm_handler(int s)
 {
@@ -124,7 +124,7 @@ int accept_new_client(struct db_daemon_data *d) {
     return add_client(d, new_client_fd);
 }
 
-#else // !WINNT
+#else // !WIN32
 
 /* Main pipe server processing loop (separate thread).
  * Takes care of accepting clients and receiving data.
@@ -306,9 +306,9 @@ void close_server_socket(struct db_daemon_data *d) {
     QpsDestroy(d->pipe_server);
     d->pipe_server = NULL;
 }
-#endif // WINNT
+#endif // WIN32
 
-#ifndef WINNT
+#ifndef WIN32
 
 int fill_fdsets_for_select(struct db_daemon_data *d,
         fd_set * read_fdset, fd_set * write_fdset) {
@@ -487,7 +487,7 @@ int init_server_socket(struct db_daemon_data *d) {
     return 1;
 }
 
-#endif /* !WINNT */
+#endif /* !WIN32 */
 
 int init_vchan(struct db_daemon_data *d) {
     if (d->vchan) {
@@ -515,7 +515,7 @@ int init_vchan(struct db_daemon_data *d) {
     return 1;
 }
 
-#ifndef WINNT
+#ifndef WIN32
 int create_pidfile(struct db_daemon_data *d) {
     char pidfile_name[256];
     FILE *pidfile;
@@ -567,7 +567,7 @@ void close_server_socket(struct db_daemon_data *d)
     close(d->socket_fd);
     unlink(sockname.sun_path);
 }
-#endif
+#endif // !WIN32
 
 void usage(char *argv0) {
     fprintf(stderr, "Usage: %s <remote-domid> [<remote-name>]\n", argv0);
@@ -576,7 +576,7 @@ void usage(char *argv0) {
 
 int main(int argc, char **argv) {
     struct db_daemon_data d;
-#ifndef WINNT
+#ifndef WIN32
     int ready_pipe[2] = {0, 0};
     pid_t pid;
 #endif
@@ -598,7 +598,7 @@ int main(int argc, char **argv) {
     /* if not running under SystemD, fork and use pipe() to notify parent about
      * sucessful start */
     /* FIXME: OS dependent code */
-#ifndef WINNT
+#ifndef WIN32
     if (!getenv("NOTIFY_SOCKET")) {
         char buf[6];
         char log_path[MAX_FILE_PATH];
@@ -646,7 +646,7 @@ int main(int argc, char **argv) {
     signal(SIGTERM, sigterm_handler);
 #endif
 
-#ifndef WINNT
+#ifndef WIN32
     d.db = qubesdb_init(write_client_buffered);
 #else
     d.db = qubesdb_init(send_watch_notify);
@@ -656,16 +656,12 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-#ifdef WINNT
-    d.db->pipe_server = d.pipe_server;
-#endif
-
     if (!init_server_socket(&d)) {
         fprintf(stderr, "FATAL: server socket initialization failed\n");
         exit(1);
     }
 
-#ifdef WINNT
+#ifdef WIN32
     d.db->pipe_server = d.pipe_server;
 #endif
 
@@ -692,7 +688,7 @@ int main(int argc, char **argv) {
 
     /* now ready for serving requests, notify parent */
     /* FIXME: OS dependent code */
-#ifndef WINNT
+#ifndef WIN32
     if (getenv("NOTIFY_SOCKET")) {
         sd_notify(1, "READY=1");
     } else {
@@ -711,7 +707,7 @@ int main(int argc, char **argv) {
 
     close_server_socket(&d);
 
-#ifndef WINNT
+#ifndef WIN32
     remove_pidfile(&d);
 #endif
 

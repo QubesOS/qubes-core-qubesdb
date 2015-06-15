@@ -1,7 +1,7 @@
 #ifndef _QUBESDB_CLIENT_H
 #define _QUBESDB_CLIENT_H
 
-#ifdef WINNT
+#ifdef WIN32
 #include <windows.h>
 
 #ifdef QUBESDBCLIENT_EXPORTS
@@ -10,7 +10,7 @@
 #    define QUBESDBCLIENT_API __declspec(dllimport)
 #endif
 
-#else /* WINNT */
+#else /* WIN32 */
 define QUBESDBCLIENT_API
 #endif
 
@@ -143,7 +143,7 @@ char *qdb_read_watch(qdb_handle_t h);
  * event object.
  */
 QUBESDBCLIENT_API
-#ifdef WINNT
+#ifdef WIN32
 HANDLE
 #else
 int

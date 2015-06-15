@@ -94,13 +94,13 @@ enum qdb_msg {
 #define QDB_MAX_PATH 64
 
 /** Socket path for dom0 part of daemon for given VM */
-#ifdef WINNT
+#ifdef WIN32
 #define QDB_DAEMON_PATH_PATTERN L"\\\\.\\pipe\\qubesdb.%S.sock"
 #else
 #define QDB_DAEMON_PATH_PATTERN "/var/run/qubes/qubesdb.%s.sock"
 #endif
 /** Socket path for VM part of daemon */
-#ifdef WINNT
+#ifdef WIN32
 #ifdef BACKEND_VMM_wni
 // filled with domain name
 #define QDB_DAEMON_LOCAL_PATH L"\\\\.\\pipe\\%s\\qubesdb.sock"

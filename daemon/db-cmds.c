@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <assert.h>
-#ifdef WINNT
+#ifdef WIN32
 #include <windows.h>
 #include <strsafe.h>
 
@@ -114,7 +114,7 @@ int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
  */
 int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
-#ifndef WINNT
+#ifndef WIN32
     int ret, count;
 #endif
 
@@ -129,7 +129,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         }
         return 1;
     } else {
-#ifndef WINNT
+#ifndef WIN32
         int buf_datacount;
         while ((buf_datacount = buffer_datacount(c->write_queue))) {
             ret = write(c->fd, buffer_data(c->write_queue), buf_datacount);
@@ -149,7 +149,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
             }
             count += ret;
         }
-#else // !WINNT
+#else // !WIN32
         DWORD status = QpsWrite(d->pipe_server, c->index, data, data_len);
         if (status != ERROR_SUCCESS)
             return 0;
@@ -160,7 +160,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
 
 int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
-#ifndef WINNT
+#ifndef WIN32
     int ret, count;
 #endif
 
@@ -179,7 +179,7 @@ int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
         }
         return 1;
     } else {
-#ifndef WINNT
+#ifndef WIN32
         count = 0;
         while (count < data_len) {
             ret = read(c->fd, data + count, data_len - count);
@@ -194,7 +194,7 @@ int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
                 return 0;
             count += ret;
         }
-#else // !WINNT
+#else // !WIN32
         DWORD status = QpsRead(d->pipe_server, c->index, data, data_len);
         if (status != ERROR_SUCCESS)
             return 0;
@@ -242,7 +242,7 @@ int discard_data_and_send_error(struct db_daemon_data *d, struct client *client,
     return 0;
 }
 
-#ifndef WINNT
+#ifndef WIN32
 /** Send data to a client, but in non-blocking way - if write would block,
  * buffer the data instead
  * @param client Client connection
@@ -300,7 +300,7 @@ out:
     }
     return ret;
 }
-#else // !WINNT
+#else // !WIN32
 int send_watch_notify(struct client *c, char *buf, size_t len, PIPE_SERVER ps)
 {
     DWORD status = QpsWrite(ps, c->index, buf, (DWORD)len);
@@ -471,7 +471,7 @@ int handle_multiread(struct db_daemon_data *d, struct client *client,
         return discard_data_and_send_error(d, client, hdr);
     }
 
-#ifndef WINNT
+#ifndef WIN32
     strncpy(search_path, hdr->path, QDB_MAX_PATH);
 #else
     StringCbCopyA(search_path, sizeof(search_path), hdr->path);
@@ -489,7 +489,7 @@ int handle_multiread(struct db_daemon_data *d, struct client *client,
     }
     while (db_entry != d->db->entries &&
              strncmp(db_entry->path, search_path, search_path_len) == 0) {
-#ifndef WINNT
+#ifndef WIN32
         strncpy(hdr->path, db_entry->path, sizeof(hdr->path));
 #else
         StringCbCopyA(hdr->path, sizeof(hdr->path), db_entry->path);
@@ -535,7 +535,7 @@ int handle_list(struct db_daemon_data *d, struct client *client,
         return discard_data_and_send_error(d, client, hdr);
     }
 
-#ifndef WINNT
+#ifndef WIN32
     strncpy(search_path, hdr->path, QDB_MAX_PATH);
 #else
     StringCbCopyA(search_path, sizeof(search_path), hdr->path);
@@ -547,7 +547,7 @@ int handle_list(struct db_daemon_data *d, struct client *client,
     db_entry = qubesdb_search(d->db, search_path, 0);
     while (db_entry != d->db->entries &&
              strncmp(db_entry->path, search_path, search_path_len) == 0) {
-#ifndef WINNT
+#ifndef WIN32
         strncpy(hdr->path, db_entry->path, sizeof(hdr->path));
 #else
         StringCbCopyA(hdr->path, sizeof(hdr->path), db_entry->path);
@@ -694,7 +694,7 @@ int handle_client_data(struct db_daemon_data *d, struct client *client,
 
     if (!verify_hdr(&hdr, 0)) {
         fprintf(stderr, "invalid message received from client "
-#ifndef WINNT
+#ifndef WIN32
                 CLIENT_SOCKET_FORMAT "\n", client->fd);
 #else
                 CLIENT_SOCKET_FORMAT "\n", client->index);

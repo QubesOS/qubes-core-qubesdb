@@ -15,7 +15,7 @@
     </Link>
     <ClCompile>
       <ExceptionHandling>false</ExceptionHandling>
-      <PreprocessorDefinitions>WINNT;_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <CustomBuildStep>

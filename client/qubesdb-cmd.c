@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef WINNT
+#ifdef WIN32
 #include <windows.h>
 #include <getopt.h>
 #else
@@ -37,7 +37,7 @@ void encode_and_print_value(char *val) {
         if (val[i] >= 0x20 && val[i] < 0x80)
             printf("%c", val[i]);
         else
-#ifndef WINNT
+#ifndef WIN32
             printf("\\x%02hhx", val[i]);
 #else
             /* windows doesn't support 'h' modifier */
@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
         do_cmd = parse_cmd(cmd_argv0);
     }
 
-#ifndef WINNT
+#ifndef WIN32
     while ((opt = getopt(argc, argv, "hc:d:n:frq")) != -1)
 #else
     while ((opt = getopt(argc, argv, "hc:d:n:frq")) != 0)
@@ -276,7 +276,7 @@ int main(int argc, char **argv) {
             case 'h':
                 usage(argv[0]);
                 exit(0);
-#ifndef WINNT
+#ifndef WIN32
             default:
                 usage(argv[0]);
                 exit(1);
@@ -296,8 +296,8 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-	optind -= 2;
-	printf("argc %d, optind %d\n", argc, optind);
+    optind -= 2;
+    printf("argc %d, optind %d\n", argc, optind);
     switch (do_cmd) {
         case DO_READ:
             ret = cmd_read(h, argc-optind, argv+optind);
