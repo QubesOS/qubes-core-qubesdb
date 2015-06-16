@@ -33,5 +33,15 @@ if exist $(TargetDir)$(TargetName).lib xcopy /y $(TargetDir)$(TargetName).lib $(
       <Inputs>$(TargetPath);$(TargetDir)$(TargetName).pdb;$(TargetDir)$(TargetName).lib</Inputs>
     </CustomBuildStep>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
