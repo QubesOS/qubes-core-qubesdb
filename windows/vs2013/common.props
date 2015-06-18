@@ -6,8 +6,8 @@
   <PropertyGroup Label="UserMacros" />
 
   <PropertyGroup>
-    <IncludePath>$(QUBES_INCLUDES);$(SolutionDir)\..\..\include;$(IncludePath)</IncludePath>
-    <LibraryPath>$(QUBES_LIBS);$(SolutionDir)\$(Configuration)\$(Platform);$(LibraryPath)</LibraryPath>
+    <IncludePath>$(SolutionDir)\..\..\include;$(QUBES_INCLUDES);$(IncludePath)</IncludePath>
+    <LibraryPath>$(SolutionDir)\$(Configuration)\$(Platform);$(QUBES_LIBS);$(LibraryPath)</LibraryPath>
     <OutDir>$(SolutionDir)\$(Configuration)\$(Platform)\</OutDir>
     <IntDir>$(SolutionDir)\$(ProjectName)\$(Configuration)\$(Platform)\</IntDir>
     <LinkIncremental>false</LinkIncremental>
@@ -16,10 +16,6 @@
   <PropertyGroup Label="Configuration">
     <LinkIncremental>false</LinkIncremental>
     <PlatformToolset>v120</PlatformToolset>
-  </PropertyGroup>
-
-  <PropertyGroup Condition="'$(Configuration)'=='Debug'">
-    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
