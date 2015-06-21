@@ -36,6 +36,13 @@ Description='Installation directory'
 DisplayName='Installation directory'
 />
 
+<Substitution
+Table='Directory'
+Column='Directory_Parent'
+Row='BinDir'
+Value='[=ProductFolder]'
+/>
+
 <Directory Id='TARGETDIR' Name='SourceDir'>
     <Directory Id='$(var.PFILESDIR)'>
         <Directory Id='ITLProgramFilesDir' Name='Invisible Things Lab'>
