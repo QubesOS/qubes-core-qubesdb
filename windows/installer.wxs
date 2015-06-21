@@ -43,7 +43,26 @@ DisplayName='Installation directory'
                 <Directory Id='BinDir' Name='bin'>
                     <Component Id='QubesDbDaemon' Guid='{1CE95F90-FBD1-4D1D-B955-C31D42F84D3C}'>
                         <File Id='QdbDaemon' Source='bin\$(env.DDK_ARCH)\qubesdb-daemon.exe' KeyPath='yes'/>
-                        <File Id='QdbCmd' Source='bin\$(env.DDK_ARCH)\qubesdb-cmd.exe'/>
+                        <ServiceInstall
+                        Id='QdbService'
+                        Type='ownProcess'
+                        Vital='yes'
+                        Name='QdbDaemon'
+                        DisplayName='QubesDB daemon'
+                        Description='Qubes configuration database agent'
+                        Start='auto'
+                        Account='LocalSystem'
+                        ErrorControl='ignore'
+                        Interactive='no'
+                        />
+
+                        <ServiceControl
+                        Id='QdbServiceControl'
+                        Stop='both'
+                        Remove='uninstall'
+                        Name='QdbDaemon'
+                        Wait='yes'
+                        />
                     </Component>
                 </Directory>
             </Directory>
@@ -52,6 +71,7 @@ DisplayName='Installation directory'
     <Directory Id='$(var.SYSDIR)'>
         <Component Id='QubesDbClient' Guid='{E9742F11-6E77-44FC-8A53-168BE2D9273A}'>
             <File Id='QdbClient' Source='bin\$(env.DDK_ARCH)\qubesdb-client.dll' KeyPath='yes'/>
+            <File Id='QdbCmd' Source='bin\$(env.DDK_ARCH)\qubesdb-cmd.exe'/>
         </Component>
     </Directory>
 </Directory>

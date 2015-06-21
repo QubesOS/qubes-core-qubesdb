@@ -111,6 +111,11 @@ enum qdb_msg {
 #define QDB_DAEMON_LOCAL_PATH "/var/run/qubes/qubesdb.sock"
 #endif
 
+#ifdef WIN32
+// Daemon win32 service name
+#define QDB_DAEMON_SERVICE_NAME L"QdbDaemon"
+#endif
+
 struct qdb_hdr {
     /** Message type as listed in `enum qdb_msg` */
     uint8_t type;

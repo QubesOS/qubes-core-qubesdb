@@ -75,6 +75,7 @@ struct db_daemon_data {
     PIPE_SERVER pipe_server;
     SECURITY_ATTRIBUTES sa;
     struct client clients[PS_MAX_CLIENTS];
+    HANDLE service_stop_event;
 #else
     int socket_fd;              /* local server socket */
     struct client *client_list; /* local clients */

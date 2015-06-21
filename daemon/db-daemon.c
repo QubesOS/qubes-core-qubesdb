@@ -18,6 +18,7 @@
 
 #include <log.h>
 #include <pipe-server.h>
+#include <service.h>
 #endif
 
 #ifndef WIN32
@@ -140,7 +141,7 @@ int mainloop(struct db_daemon_data *d) {
     DWORD ret;
     DWORD status;
     HANDLE pipe_thread;
-    HANDLE wait_objects[2];
+    HANDLE wait_objects[3];
 
     // Create the thread that will handle client pipes
     pipe_thread = CreateThread(NULL, 0, pipe_thread_main, d->pipe_server, 0, NULL);
@@ -153,9 +154,12 @@ int mainloop(struct db_daemon_data *d) {
     // we're going down as well.
     wait_objects[0] = pipe_thread;
 
+    // Also exit if the service is being stopped.
+    wait_objects[1] = d->service_stop_event;
+
     // This loop will just process vchan data.
     while (1) {
-        wait_objects[1] = libvchan_fd_for_select(d->vchan);
+        wait_objects[2] = libvchan_fd_for_select(d->vchan);
         /* TODO: add one more event for service termination */
         ret = WaitForMultipleObjects(2, wait_objects, FALSE, INFINITE) - WAIT_OBJECT_0;
 
@@ -168,6 +172,12 @@ int mainloop(struct db_daemon_data *d) {
         }
 
         case 1: {
+            // service stopped
+            LogInfo("service stopped, exiting");
+            return 1;
+        }
+
+        case 2: {
             // vchan read
             if (d->remote_connected && !libvchan_is_open(d->vchan)) {
                 fprintf(stderr, "vchan closed\n");
@@ -574,6 +584,17 @@ void usage(char *argv0) {
     fprintf(stderr, "       Give <remote-name> only in dom0\n");
 }
 
+#ifdef WIN32
+DWORD WINAPI service_thread(PVOID param) {
+    PSERVICE_WORKER_CONTEXT ctx = param;
+    struct db_daemon_data *d = ctx->UserContext;
+
+    d->service_stop_event = ctx->StopEvent;
+
+    return mainloop(d) ? NO_ERROR : ERROR_UNIDENTIFIED_ERROR;
+}
+#endif
+
 int main(int argc, char **argv) {
     struct db_daemon_data d;
 #ifndef WIN32
@@ -698,9 +719,20 @@ int main(int argc, char **argv) {
     }
 
     create_pidfile(&d);
-#endif
 
     ret = !mainloop(&d);
+#else
+    // ideally all the above initialization should be performed in ServiceMain
+
+    // start the service loop, service_thread runs mainloop()
+    ret = SvcMainLoop(QDB_DAEMON_SERVICE_NAME,
+                      0, // not interested in any control codes
+                      service_thread, // worker thread
+                      &d, // worker thread context
+                      NULL, // notification handler
+                      NULL // notification context
+                      );
+#endif
 
     if (d.vchan)
         libvchan_close(d.vchan);

@@ -9,5 +9,6 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\daemon\buffer.h" />
     <ClInclude Include="..\..\..\daemon\qubesdb_internal.h" />
+    <ClInclude Include="..\..\..\include\qubesdb.h" />
   </ItemGroup>
 </Project>
