@@ -792,3 +792,9 @@ char *qdb_read_watch(qdb_handle_t h) {
     }
     return ret;
 }
+
+#ifdef WIN32
+void qdb_free(void *p) {
+    free(p);
+}
+#endif

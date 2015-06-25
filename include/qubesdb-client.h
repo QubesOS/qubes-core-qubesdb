@@ -150,6 +150,14 @@ int
 #endif
 qdb_watch_fd(qdb_handle_t h);
 
+#ifdef WIN32
+/** Free memory allocated by this DLL.
+ * This is needed for executables that don't use the same CRT as this DLL (can't just use free() in such cases).
+ * @param p The pointer to free
+ */
+QUBESDBCLIENT_API
+void qdb_free(void *p);
+#endif
 
 #ifdef __cplusplus
 }
