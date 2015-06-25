@@ -43,8 +43,7 @@ int init_vchan(struct db_daemon_data *d);
 
 #ifndef WIN32
 int sigterm_received = 0;
-void sigterm_handler(int s)
-{
+void sigterm_handler(int s) {
     sigterm_received = 1;
 }
 
@@ -243,7 +242,7 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
 
         if (!handle_client_data(p->daemon, &c, (char*)&hdr, sizeof(hdr))) {
             LogWarning("handle_client_data failed, disconnecting client %lu", p->index);
-            // FIXME: disconnect the client
+            QpsDisconnectClient(p->daemon->pipe_server, p->index);
         }
     }
 }
@@ -255,7 +254,7 @@ void client_connected_callback(PIPE_SERVER server, DWORD index, PVOID context) {
     param = malloc(sizeof(struct thread_param));
     if (!param) {
         LogError("no memory");
-        // FIXME: disconnect the client
+        QpsDisconnectClient(server, index);
         return;
     }
 
@@ -561,8 +560,7 @@ void remove_pidfile(struct db_daemon_data *d) {
     unlink(pidfile_name);
 }
 
-void close_server_socket(struct db_daemon_data *d)
-{
+void close_server_socket(struct db_daemon_data *d) {
     struct sockaddr_un sockname;
     socklen_t addrlen;
 
