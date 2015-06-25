@@ -84,6 +84,9 @@ static int connect_to_daemon(struct qdb_handle *qh) {
 #endif
     }
 
+    qh->read_pipe = INVALID_HANDLE_VALUE;
+    qh->write_pipe = INVALID_HANDLE_VALUE;
+
     // Try to open the read pipe; wait for it, if necessary.
     do {
         qh->read_pipe = CreateFile(pipe_name,
@@ -162,6 +165,7 @@ static int connect_to_daemon(struct qdb_handle *qh) {
 error:
     if (fd >= 0)
         close(fd);
+    qh->fd = -1;
     return 0;
 }
 
