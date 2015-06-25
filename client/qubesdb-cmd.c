@@ -299,7 +299,6 @@ int main(int argc, char **argv) {
 #ifdef WIN32
     optind -= 2;
 #endif
-    printf("argc %d, optind %d\n", argc, optind);
     switch (do_cmd) {
         case DO_READ:
             ret = cmd_read(h, argc-optind, argv+optind);
