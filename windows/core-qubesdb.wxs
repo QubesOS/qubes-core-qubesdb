@@ -66,6 +66,7 @@ Value='[=ProductFolder]'
 
                         <ServiceControl
                         Id='QdbServiceControl'
+                        Start='install'
                         Stop='both'
                         Remove='uninstall'
                         Name='QdbDaemon'
