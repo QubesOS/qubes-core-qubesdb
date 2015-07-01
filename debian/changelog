@@ -1,3 +1,45 @@
+qubesdb (3.0.3-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * gitignore
+  * client: do not leak file descriptor on failed connect
+
+  [ Olivier MEDOC ]
+  * archlinux: create build scripts for archlinux and update python
+    Makefile to support selection of the python binary version
+
+  [ Rafał Wojdyła ]
+  * windows: converted qdb-client to msbuild
+  * windows: converted qubesdb-cmd to msbuild
+  * fixed memory leak warnings
+  * untabify
+  * windows: qubesdb-cmd: updated for getopt changes
+  * windows: working daemon
+  * windows: updated client for the new daemon
+  * windows: don't build for dom0
+  * windows: changed #ifdef blocks from WINNT to WIN32 (msbuild
+    standard)
+  * Link the CRT dynamically
+  * windows: share more common properties in projects
+  * windows: removed obsolete installer
+  * windows installer: cleanup, added daemon
+  * windows: fixed include priority
+  * windows: run daemon as service
+  * windows installer: fixed configurable directory
+  * windows installer: fixed daemon arguments
+  * windows: prevent installer name collision
+  * windows: added qdb_free()
+  * don't close invalid handles
+  * fixed windows-specific getopt adjustment
+  * removed debug output
+  * windows: properly disconnect client on error
+  * windows: start daemon service after install
+
+  [ Marek Marczykowski-Górecki ]
+  * Compile fixes for Linux code
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 01 Jul 2015 07:07:42 +0200
+
 qubesdb (3.0.2-1) wheezy; urgency=medium
 
   * client: mark socket with SOCK_CLOEXEC
