@@ -11,7 +11,7 @@
 #endif
 
 #else /* WIN32 */
-define QUBESDBCLIENT_API
+#define QUBESDBCLIENT_API
 #endif
 
 #ifdef __cplusplus

@@ -751,8 +751,7 @@ qdb_watch_fd(qdb_handle_t h) {
     return INVALID_HANDLE_VALUE;
 #else
     if (!h->connected) {
-        h->fd = connect_to_daemon(h->vmname);
-        if (h->fd == -1) {
+        if (!connect_to_daemon(h)) {
             /* reconnect failed */
             errno = EPIPE;
             return -1;
