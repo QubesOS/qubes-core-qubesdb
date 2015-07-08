@@ -17,7 +17,7 @@ LIBS += -L$(QUBES_LIBS) -lvchan-$(BACKEND_VMM)
 endif
 CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
 
-SBINDIR = /usr/sbin
+SBINDIR ?= /usr/sbin
 
 all: qubesdb-daemon$(EXEEXT)
 
