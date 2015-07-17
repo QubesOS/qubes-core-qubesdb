@@ -161,7 +161,7 @@ int mainloop(struct db_daemon_data *d) {
     while (1) {
         wait_objects[2] = libvchan_fd_for_select(d->vchan);
         /* TODO: add one more event for service termination */
-        ret = WaitForMultipleObjects(2, wait_objects, FALSE, INFINITE) - WAIT_OBJECT_0;
+        ret = WaitForMultipleObjects(3, wait_objects, FALSE, INFINITE) - WAIT_OBJECT_0;
 
         switch (ret) {
         case 0: {
