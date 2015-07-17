@@ -224,7 +224,7 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
                 fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client->fd);
 #else
             if (db->send_watch_notify && db->send_watch_notify(watch->client, (char*)&hdr, sizeof(hdr), db->pipe_server) < 0)
-                fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client->index);
+                fprintf(stderr, "Failed to fire watch on %s for client %d\n", path, watch->client->id);
 #endif
             fired_anything = 1;
         }

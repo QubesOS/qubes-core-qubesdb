@@ -56,7 +56,7 @@ struct qubesdb {
 
 struct client {
 #ifdef WIN32
-    DWORD index;
+    DWORD id;
 #else
     struct client *next;
     client_socket_t fd;
@@ -74,7 +74,6 @@ struct db_daemon_data {
 #ifdef WIN32
     PIPE_SERVER pipe_server;
     SECURITY_ATTRIBUTES sa;
-    struct client clients[PS_MAX_CLIENTS];
     HANDLE service_stop_event;
 #else
     int socket_fd;              /* local server socket */
