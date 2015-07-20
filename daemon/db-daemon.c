@@ -393,25 +393,28 @@ int mainloop(struct db_daemon_data *d) {
         if (d->vchan) {
             if (FD_ISSET(libvchan_fd_for_select(d->vchan), &read_fdset))
                 libvchan_wait(d->vchan);
-            if (d->remote_connected && !libvchan_is_open(d->vchan)) {
+            if (!libvchan_is_open(d->vchan)) {
                 fprintf(stderr, "vchan closed\n");
-                if (!d->remote_name) {
-                    /* In the VM, wait for possible qubesdb-daemon dom0 restart.
-                     * This can be a case for DispVM  */
-                    /* FIXME: in such case dom0 daemon will have no entries
-                     * currently present in VM instance; perhaps we should
-                     * clear VM instance? */
+                if (d->remote_connected) {
+                    d->remote_connected = 0;
+                    /* it was connected before, try to reconnect */
+                    fprintf(stderr, "reconnecting\n");
                     if (!init_vchan(d)) {
                         fprintf(stderr, "vchan reconnection failed\n");
                         break;
                     }
-                    /* request database sync from dom0 */
-                    if (!request_full_db_sync(d)) {
-                        fprintf(stderr, "FATAL: failed to request DB sync\n");
-                        exit(1);
+                    if (!d->remote_name) {
+                        /* FIXME: consider clearing the database, but needs to
+                         * handle watches (DispVM case) */
+                        /* request database sync from dom0 */
+                        if (!request_full_db_sync(d)) {
+                            fprintf(stderr, "FATAL: failed to request DB sync\n");
+                            exit(1);
+                        }
+                        d->multiread_requested = 1;
                     }
-                    d->multiread_requested = 1;
                 } else {
+                    /* it wasn't connected, domain is probably dead */
                     break;
                 }
             }
