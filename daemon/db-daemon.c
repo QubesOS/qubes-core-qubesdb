@@ -19,6 +19,7 @@
 #include <log.h>
 #include <pipe-server.h>
 #include <service.h>
+#include <list.h>
 #endif
 
 #ifndef WIN32
@@ -32,7 +33,7 @@
 // parameters for a client pipe thread
 struct thread_param {
     struct db_daemon_data *daemon;
-    DWORD index;
+    DWORD id;
 };
 #endif
 
@@ -160,7 +161,7 @@ int mainloop(struct db_daemon_data *d) {
     while (1) {
         wait_objects[2] = libvchan_fd_for_select(d->vchan);
         /* TODO: add one more event for service termination */
-        ret = WaitForMultipleObjects(2, wait_objects, FALSE, INFINITE) - WAIT_OBJECT_0;
+        ret = WaitForMultipleObjects(3, wait_objects, FALSE, INFINITE) - WAIT_OBJECT_0;
 
         switch (ret) {
         case 0: {
@@ -229,36 +230,40 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
     struct qdb_hdr hdr;
     DWORD status;
 
-    c.index = p->index;
+    c.id = p->id;
 
     while (1) {
         // blocking read
-        status = QpsRead(p->daemon->pipe_server, p->index, &hdr, sizeof(hdr));
+        status = QpsRead(p->daemon->pipe_server, p->id, &hdr, sizeof(hdr));
         if (ERROR_SUCCESS != status) {
             perror("QpsRead");
-            LogWarning("read from client %lu failed", p->index);
+            LogWarning("read from client %lu failed", p->id);
+            QpsDisconnectClient(p->daemon->pipe_server, p->id);
+            free(param);
             return status;
         }
 
         if (!handle_client_data(p->daemon, &c, (char*)&hdr, sizeof(hdr))) {
-            LogWarning("handle_client_data failed, disconnecting client %lu", p->index);
-            QpsDisconnectClient(p->daemon->pipe_server, p->index);
+            LogWarning("handle_client_data failed, disconnecting client %lu", p->id);
+            QpsDisconnectClient(p->daemon->pipe_server, p->id);
+            free(param);
+            return 1;
         }
     }
 }
 
-void client_connected_callback(PIPE_SERVER server, DWORD index, PVOID context) {
+void client_connected_callback(PIPE_SERVER server, DWORD id, PVOID context) {
     HANDLE client_thread;
     struct thread_param *param;
 
     param = malloc(sizeof(struct thread_param));
     if (!param) {
         LogError("no memory");
-        QpsDisconnectClient(server, index);
+        QpsDisconnectClient(server, id);
         return;
     }
 
-    param->index = index;
+    param->id = id;
     param->daemon = context;
     client_thread = CreateThread(NULL, 0, pipe_thread_client, param, 0, NULL);
     if (!client_thread) {

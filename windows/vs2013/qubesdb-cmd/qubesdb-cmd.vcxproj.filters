@@ -3,4 +3,7 @@
   <ItemGroup>
     <ClCompile Include="..\..\..\client\qubesdb-cmd.c" />
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="version.rc" />
+  </ItemGroup>
 </Project>

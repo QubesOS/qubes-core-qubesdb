@@ -6,6 +6,7 @@
 #include <strsafe.h>
 #include <log.h>
 #include <qubes-io.h>
+#include <pipe-server.h>
 #else
 #include <unistd.h>
 #include <sys/socket.h>
@@ -62,7 +63,6 @@ void free_path_list(struct path_list *plist) {
 static int connect_to_daemon(struct qdb_handle *qh) {
     WCHAR pipe_name[MAX_FILE_NAME];
     ULONG status;
-    DWORD pid;
 
     if (qh->vmname && strcmp(qh->vmname, "dom0") != 0) {
         StringCbPrintf(pipe_name, sizeof(pipe_name), QDB_DAEMON_PATH_PATTERN, qh->vmname);
@@ -87,51 +87,12 @@ static int connect_to_daemon(struct qdb_handle *qh) {
     qh->read_pipe = INVALID_HANDLE_VALUE;
     qh->write_pipe = INVALID_HANDLE_VALUE;
 
-    // Try to open the read pipe; wait for it, if necessary.
-    do {
-        qh->read_pipe = CreateFile(pipe_name,
-                                   GENERIC_READ, // this is an inbound pipe
-                                   0,
-                                   NULL,
-                                   OPEN_EXISTING,
-                                   0,
-                                   NULL);
-
-        // Exit if an error other than ERROR_PIPE_BUSY occurs.
-        status = GetLastError();
-        if (qh->read_pipe == INVALID_HANDLE_VALUE) {
-            if (ERROR_PIPE_BUSY != status) {
-                perror("open qubesdb read pipe");
-                return 0;
-            }
-            // Wait until the pipe is available.
-            if (!WaitNamedPipe(pipe_name, NMPWAIT_WAIT_FOREVER)) {
-                perror("WaitNamedPipe(read)");
-                return 0;
-            }
-        }
-    } while (qh->read_pipe == INVALID_HANDLE_VALUE);
-
-    // Try to open the write pipe; wait for it, if necessary.
-    pid = GetCurrentProcessId();
-    StringCbPrintf(pipe_name, sizeof(pipe_name), L"%s-%d", QDB_DAEMON_LOCAL_PATH, pid);
-    do {
-        qh->write_pipe = CreateFile(pipe_name,
-                                    GENERIC_WRITE, // this is an outbound pipe
-                                    0,
-                                    NULL,
-                                    OPEN_EXISTING,
-                                    0,
-                                    NULL);
-
-        // This pipe may be not created yet
-        status = GetLastError();
-        if (qh->write_pipe == INVALID_HANDLE_VALUE && ERROR_FILE_NOT_FOUND != status) {
-            perror("open qubesdb write pipe");
-            return 0;
-        }
-        Sleep(10);
-    } while (qh->write_pipe == INVALID_HANDLE_VALUE);
+    status = QpsConnect(pipe_name, &qh->read_pipe, &qh->write_pipe);
+    if (status != ERROR_SUCCESS)
+    {
+        perror2(status, "connect to server");
+        return 0;
+    }
 
     return 1;
 }

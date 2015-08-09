@@ -150,7 +150,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
             count += ret;
         }
 #else // !WIN32
-        DWORD status = QpsWrite(d->pipe_server, c->index, data, data_len);
+        DWORD status = QpsWrite(d->pipe_server, c->id, data, data_len);
         if (status != ERROR_SUCCESS)
             return 0;
 #endif
@@ -195,7 +195,7 @@ int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
             count += ret;
         }
 #else // !WIN32
-        DWORD status = QpsRead(d->pipe_server, c->index, data, data_len);
+        DWORD status = QpsRead(d->pipe_server, c->id, data, data_len);
         if (status != ERROR_SUCCESS)
             return 0;
 #endif
@@ -303,7 +303,7 @@ out:
 #else // !WIN32
 int send_watch_notify(struct client *c, char *buf, size_t len, PIPE_SERVER ps)
 {
-    DWORD status = QpsWrite(ps, c->index, buf, (DWORD)len);
+    DWORD status = QpsWrite(ps, c->id, buf, (DWORD)len);
     if (status != ERROR_SUCCESS)
         return 0;
     return 1;
@@ -697,7 +697,7 @@ int handle_client_data(struct db_daemon_data *d, struct client *client,
 #ifndef WIN32
                 CLIENT_SOCKET_FORMAT "\n", client->fd);
 #else
-                CLIENT_SOCKET_FORMAT "\n", client->index);
+                CLIENT_SOCKET_FORMAT "\n", client->id);
 #endif
         /* recovery path */
         return discard_data_and_send_error(d, client, &hdr);
