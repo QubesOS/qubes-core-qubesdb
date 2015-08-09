@@ -1,3 +1,14 @@
+qubesdb (3.0.5-1) wheezy; urgency=medium
+
+  [ Rafał Wojdyła ]
+  * windows: update for pipe-server fixes
+  * windows: fix incorrect wait call
+  * windows: add missing version resources
+  * windows: use QpsConnect() for client connection
+  * windows daemon: make sure client's data is always released
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 09 Aug 2015 06:40:15 +0200
+
 qubesdb (3.0.4-1) wheezy; urgency=medium
 
   [ Olivier MEDOC ]
