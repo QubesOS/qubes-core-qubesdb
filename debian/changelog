@@ -1,3 +1,9 @@
+qubesdb (3.0.6-1) wheezy; urgency=medium
+
+  * rpm: disable debuginfo subpackage in qubes-kernel-vm-support
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 13 Nov 2015 23:21:20 +0100
+
 qubesdb (3.0.5-1) wheezy; urgency=medium
 
   [ Rafał Wojdyła ]
