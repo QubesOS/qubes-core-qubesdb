@@ -24,6 +24,9 @@
 
 %{!?version: %define version %(cat version)}
 
+# Package contains /usr/lib, but not binary files, which confuses find-debuginfo.sh script.
+%global debug_package %{nil}
+
 Name:		qubes-db-dom0
 Version:	%{version}
 Release:	1%{?dist}
