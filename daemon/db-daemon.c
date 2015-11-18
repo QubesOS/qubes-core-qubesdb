@@ -599,6 +599,15 @@ DWORD WINAPI service_thread(PVOID param) {
 
     return mainloop(d) ? NO_ERROR : ERROR_UNIDENTIFIED_ERROR;
 }
+
+static void vchan_logger(IN int logLevel, IN const CHAR *function, IN const WCHAR *format, IN va_list args)
+{
+    WCHAR buf[1024];
+
+    StringCbVPrintfW(buf, sizeof(buf), format, args);
+    _LogFormat(logLevel, FALSE, function, buf);
+}
+
 #endif
 
 int main(int argc, char **argv) {
@@ -676,6 +685,7 @@ int main(int argc, char **argv) {
 #ifndef WIN32
     d.db = qubesdb_init(write_client_buffered);
 #else
+    libvchan_register_logger(vchan_logger);
     d.db = qubesdb_init(send_watch_notify);
 #endif
     if (!d.db) {
