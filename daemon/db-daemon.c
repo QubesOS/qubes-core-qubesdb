@@ -20,6 +20,7 @@
 #include <pipe-server.h>
 #include <service.h>
 #include <list.h>
+#include <vchan-common.h>
 #endif
 
 #ifndef WIN32
@@ -142,6 +143,27 @@ int mainloop(struct db_daemon_data *d) {
     DWORD status;
     HANDLE pipe_thread;
     HANDLE wait_objects[3];
+
+    if (!init_vchan(d)) {
+        perror("vchan initialization failed");
+        return 0;
+    }
+
+    if (!d->remote_name) {
+        /* request database sync from dom0 */
+        if (!request_full_db_sync(d)) {
+            LogError("FATAL: failed to request DB sync");
+            return 0;
+        }
+        d->multiread_requested = 1;
+        /* wait for complete response */
+        while (d->multiread_requested) {
+            if (!handle_vchan_data(d)) {
+                LogError("FATAL: vchan error");
+                return 0;
+            }
+        }
+    }
 
     // Create the thread that will handle client pipes
     pipe_thread = CreateThread(NULL, 0, pipe_thread_main, d->pipe_server, 0, NULL);
@@ -518,13 +540,25 @@ int init_vchan(struct db_daemon_data *d) {
             d->vchan = NULL;
             return 1;
         }
+#ifndef WIN32
         d->vchan = libvchan_server_init(d->remote_domid, QUBESDB_VCHAN_PORT, 4096, 4096);
+#else
+        // We give a 5 minute timeout here because xeniface can take some time
+        // to load the first time after reboot after pvdrivers installation.
+        d->vchan = VchanInitServer(d->remote_domid, QUBESDB_VCHAN_PORT, 4096, 5 * 60 * 1000);
+#endif
         if (!d->vchan)
             return 0;
         d->remote_connected = 0;
     } else {
         /* VM part: connect to admin domain */
+#ifndef WIN32
         d->vchan = libvchan_client_init(d->remote_domid, QUBESDB_VCHAN_PORT);
+#else
+        // We give a 5 minute timeout here because xeniface can take some time
+        // to load the first time after reboot after pvdrivers installation.
+        d->vchan = VchanInitClient(d->remote_domid, QUBESDB_VCHAN_PORT, 5 * 60 * 1000);
+#endif
         if (!d->vchan)
             return 0;
         d->remote_connected = 1;
@@ -700,8 +734,20 @@ int main(int argc, char **argv) {
 
 #ifdef WIN32
     d.db->pipe_server = d.pipe_server;
-#endif
+    /* For Windows, vchan is initialized later, after the service starts
+       and reports to the OS. Otherwise it can time-out after the first
+       reboot after installation and OS will kill the service.
 
+       start the service loop, service_thread runs mainloop()
+    */
+    ret = SvcMainLoop(QDB_DAEMON_SERVICE_NAME,
+                      0, // not interested in any control codes
+                      service_thread, // worker thread
+                      &d, // worker thread context
+                      NULL, // notification handler
+                      NULL // notification context
+                      );
+#else
     if (!init_vchan(&d)) {
         fprintf(stderr, "FATAL: vchan initialization failed\n");
         exit(1);
@@ -725,7 +771,6 @@ int main(int argc, char **argv) {
 
     /* now ready for serving requests, notify parent */
     /* FIXME: OS dependent code */
-#ifndef WIN32
     if (getenv("NOTIFY_SOCKET")) {
         sd_notify(1, "READY=1");
     } else {
@@ -737,17 +782,6 @@ int main(int argc, char **argv) {
     create_pidfile(&d);
 
     ret = !mainloop(&d);
-#else
-    // ideally all the above initialization should be performed in ServiceMain
-
-    // start the service loop, service_thread runs mainloop()
-    ret = SvcMainLoop(QDB_DAEMON_SERVICE_NAME,
-                      0, // not interested in any control codes
-                      service_thread, // worker thread
-                      &d, // worker thread context
-                      NULL, // notification handler
-                      NULL // notification context
-                      );
 #endif
 
     if (d.vchan)
