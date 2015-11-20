@@ -56,7 +56,7 @@ struct qubesdb {
 
 struct client {
 #ifdef WIN32
-    DWORD id;
+    LONGLONG id;
 #else
     struct client *next;
     client_socket_t fd;

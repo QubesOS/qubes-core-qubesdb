@@ -34,7 +34,7 @@
 // parameters for a client pipe thread
 struct thread_param {
     struct db_daemon_data *daemon;
-    DWORD id;
+    LONGLONG id;
 };
 #endif
 
@@ -274,7 +274,7 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
     }
 }
 
-void client_connected_callback(PIPE_SERVER server, DWORD id, PVOID context) {
+void client_connected_callback(PIPE_SERVER server, LONGLONG id, PVOID context) {
     HANDLE client_thread;
     struct thread_param *param;
 
