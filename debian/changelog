@@ -1,3 +1,16 @@
+qubesdb (3.1.0-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: disable debuginfo subpackage in qubes-kernel-vm-support
+
+  [ Rafał Wojdyła ]
+  * windows: use vchan logger
+  * windows: don't start daemon service immediately after install
+  * windows: wait for vchan availability on startup
+  * Update for pipe-server changes
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 28 Nov 2015 14:45:52 +0100
+
 qubesdb (3.0.5-1) wheezy; urgency=medium
 
   [ Rafał Wojdyła ]
