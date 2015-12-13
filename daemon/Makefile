@@ -4,9 +4,9 @@ EXEEXT =
 
 ifneq ($(OS),Windows_NT)
 CFLAGS += -fPIC -O2
-CFLAGS += `pkg-config --cflags libsystemd-daemon`
+CFLAGS += `pkg-config --cflags libsystemd || pkg-config --cflags libsystemd-daemon`
 CFLAGS += `pkg-config --cflags vchan-$(BACKEND_VMM)`
-LIBS += `pkg-config --libs libsystemd-daemon`
+LIBS += `pkg-config --libs libsystemd || pkg-config --libs libsystemd-daemon`
 LIBS += `pkg-config --libs vchan-$(BACKEND_VMM)`
 
 else # Windows_NT
