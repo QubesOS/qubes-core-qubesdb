@@ -47,6 +47,7 @@ int verify_path(char *path) {
             case '/':
             case '.':
             case ':':
+            case '@':
                 break;
             default:
                 /* forbidden character in path */
