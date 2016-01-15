@@ -94,7 +94,7 @@ make install DESTDIR=%{buildroot} LIBDIR=%{_libdir} BINDIR=%{_bindir} SBINDIR=%{
 %files libs
 %{_libdir}/libqubesdb.so
 %{python_sitearch}/QubesDB-*egg-info
-%{python_sitearch}/qubes/qdb.so
+%{python_sitearch}/qubesdb.so
 
 %files devel
 /usr/include/qubesdb.h

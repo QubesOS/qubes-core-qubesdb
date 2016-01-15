@@ -41,7 +41,7 @@
 #define PyMODINIT_FUNC DL_EXPORT(void)
 #endif
 
-#define PKG "qubes.qdb"
+#define PKG "qubesdb"
 #define CLS "QubesDB"
 
 static PyObject *qdb_error;
@@ -81,7 +81,7 @@ static int parse_handle_path(QdbHandle *self, PyObject *args,
 	"\n"                                            \
 	"Returns: [string] data read.\n"                \
 	"         None if key doesn't exist.\n"         \
-	"Raises qubes.qdb.Error on error.\n"               \
+	"Raises qubesdb.Error on error.\n"               \
 	"\n"
 
 static PyObject *qdbpy_read(QdbHandle *self, PyObject *args)
@@ -115,7 +115,7 @@ static PyObject *qdbpy_read(QdbHandle *self, PyObject *args)
 	" data   [string] : data to write.\n"			\
 	"\n"							\
 	"Returns None on success.\n"				\
-	"Raises qubes.qdb.Error on error.\n"			\
+	"Raises qubesdb.Error on error.\n"			\
 	"\n"
 
 static PyObject *qdbpy_write(QdbHandle *self, PyObject *args)
@@ -146,7 +146,7 @@ static PyObject *qdbpy_write(QdbHandle *self, PyObject *args)
 	"\n"							\
 	"Returns: [string array] list of full paths matching given prefix.\n"	\
 	"         None if key doesn't exist.\n"			\
-	"Raises qubes.qdb.Error on error.\n"			\
+	"Raises qubesdb.Error on error.\n"			\
 	"\n"
 
 static PyObject *qdbpy_list(QdbHandle *self, PyObject *args)
@@ -184,7 +184,7 @@ static PyObject *qdbpy_list(QdbHandle *self, PyObject *args)
 	" path [string]:        path prefix to read.\n"                \
 	"\n"							\
 	"Returns: [string dict] dict of entries. Keys are full paths matching given prefix.\n"	\
-	"Raises qubes.qdb.Error on error.\n"			\
+	"Raises qubesdb.Error on error.\n"			\
 	"\n"
 
 static PyObject *qdbpy_multiread(QdbHandle *self, PyObject *args)
@@ -227,7 +227,7 @@ static PyObject *qdbpy_multiread(QdbHandle *self, PyObject *args)
 	" path [string] : path to remove\n"             \
 	"\n"                                            \
 	"Returns None on success.\n"                    \
-	"Raises qubes.qdb.Error on error.\n"               \
+	"Raises qubesdb.Error on error.\n"               \
 	"\n"
 
 static PyObject *qdbpy_rm(QdbHandle *self, PyObject *args)
@@ -252,7 +252,7 @@ static PyObject *qdbpy_rm(QdbHandle *self, PyObject *args)
 	" path     [string] : xenstore path.\n"				\
 	"\n"								\
 	"Returns None on success.\n"					\
-	"Raises qubes.qdb.Error on error.\n"				\
+	"Raises qubesdb.Error on error.\n"				\
 	"\n"
 
 static PyObject *qdbpy_watch(QdbHandle *self, PyObject *args)
@@ -276,7 +276,7 @@ static PyObject *qdbpy_watch(QdbHandle *self, PyObject *args)
 	"Read a watch notification.\n"				\
 	"\n"							\
 	"Returns: path.\n"			\
-	"Raises qubes.qdb.Error on error.\n"			\
+	"Raises qubesdb.Error on error.\n"			\
 	"\n"
 
 static PyObject *qdbpy_read_watch(QdbHandle *self, PyObject *args)
@@ -305,7 +305,7 @@ static PyObject *qdbpy_read_watch(QdbHandle *self, PyObject *args)
 	" path  [string] : path.\n"		\
 	"\n"						\
 	"Returns None on success.\n"			\
-	"Raises qubes.qdb.Error on error.\n"		\
+	"Raises qubesdb.Error on error.\n"		\
 	"\n"
 
 static PyObject *qdbpy_unwatch(QdbHandle *self, PyObject *args)
@@ -329,7 +329,7 @@ static PyObject *qdbpy_unwatch(QdbHandle *self, PyObject *args)
 	"You can monitor this FD with select/poll for reads, then call read_watch()\n" \
 	"\n"					\
 	"Returns FD on success.\n"		\
-	"Raises qubes.qdb.Error on error.\n"	\
+	"Raises qubesdb.Error on error.\n"	\
 	"\n"
 
 static PyObject *qdbpy_watch_fd(QdbHandle *self)
@@ -351,7 +351,7 @@ static PyObject *qdbpy_watch_fd(QdbHandle *self)
 	"Close the connection to Qubes DB.\n"	\
 	"\n"					\
 	"Returns None on success.\n"		\
-	"Raises qubes.qdb.Error on error.\n"	\
+	"Raises qubesdb.Error on error.\n"	\
 	"\n"
 
 static PyObject *qdbpy_close(QdbHandle *self)
@@ -494,7 +494,7 @@ static PyTypeObject qdbhandle_type = {
 
 static PyMethodDef qdb_methods[] = { { NULL } };
 
-PyMODINIT_FUNC initqdb(void)
+PyMODINIT_FUNC initqubesdb(void)
 {
     PyObject *m;
 
