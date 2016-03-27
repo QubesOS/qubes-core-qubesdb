@@ -1,15 +1,14 @@
-RPM_SPEC_FILES := rpm_spec/qubes-db.spec
+RPM_SPEC_FILES.dom0 := rpm_spec/qubes-db-dom0.spec \
+    $(if $(filter $(DIST_DOM0), $(DISTS_VM)),, rpm_spec/qubes-db.spec)
+RPM_SPEC_FILES.vm := rpm_spec/qubes-db-vm.spec rpm_spec/qubes-db.spec
+RPM_SPEC_FILES := $(RPM_SPEC_FILES.$(PACKAGE_SET))
 
-ifeq ($(PACKAGE_SET),dom0)
-  RPM_SPEC_FILES += rpm_spec/qubes-db-dom0.spec
-
-else ifeq ($(PACKAGE_SET),vm)
+ifeq ($(PACKAGE_SET),vm)
   ifneq ($(filter $(DISTRIBUTION), debian qubuntu),)
     DEBIAN_BUILD_DIRS := debian
     SOURCE_COPY_IN := source-debian-quilt-copy-in
   endif
 
-  RPM_SPEC_FILES += rpm_spec/qubes-db-vm.spec
   ARCH_BUILD_DIRS := archlinux
 endif
 
