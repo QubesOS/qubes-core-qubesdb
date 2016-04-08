@@ -1,0 +1,29 @@
+#!/bin/sh
+
+if test $# -ne 1 && test $# -ne 2
+then
+    cat <<EOF >&2
+usage: ${0} KEY [DEFAULT]
+
+Read KEY from Qubes DB and interpret it as boolean value. Non-empty string is
+considered true and both empty string and no value at are considered false. The
+value is reported as exit code, 0 for true, 1 for empty string and DEFAULT
+(if not specified, 2) for not found.
+EOF
+    exit 3
+fi
+
+KEY="$1"
+DEFAULT="${2:-2}"
+
+result=$(qubesdb-read "$KEY" 2>/dev/null)
+
+if test $? -ne 0
+then
+    exit "$DEFAULT"
+elif test -z "$result"
+then
+    exit 1
+else
+    exit 0
+fi

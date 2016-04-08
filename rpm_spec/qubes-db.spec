@@ -84,6 +84,7 @@ make install DESTDIR=%{buildroot} LIBDIR=%{_libdir} BINDIR=%{_bindir} SBINDIR=%{
 %doc
 %{_bindir}/qubesdb-cmd
 %{_bindir}/qubesdb-read
+%{_bindir}/qubesdb-read-bool
 %{_bindir}/qubesdb-write
 %{_bindir}/qubesdb-rm
 %{_bindir}/qubesdb-multiread
