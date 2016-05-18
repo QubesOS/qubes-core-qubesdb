@@ -450,7 +450,7 @@ qdbhandle_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 static int
 qdbhandle_init(QdbHandle *self, PyObject *args)
 {
-    char *vmname;
+    char *vmname = NULL;
 
     if (!PyArg_ParseTuple(args, "|s", &vmname))
         goto fail;
