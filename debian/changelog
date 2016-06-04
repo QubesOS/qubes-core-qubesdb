@@ -1,3 +1,14 @@
+qubesdb (3.2.0-1) wheezy; urgency=medium
+
+  [ Wojtek Porczyk ]
+  * python: fix qubesdb module in vm
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: initial version
+  * debian: add missing Build-Depends: pkg-config, libpython2.7-dev
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 04 Jun 2016 23:34:57 +0200
+
 qubesdb (3.1.2-1) wheezy; urgency=medium
 
   * Allow '@' in entry path
