@@ -43,6 +43,8 @@ BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
 BuildRequires:	systemd-devel
 BuildRequires:	python-devel
 Requires:	qubes-libvchan-%{backend_vmm}
+# XXX: VMM specific
+Requires:   xen-libs >= 2001:4.6.1-20
 
 %define _builddir %(pwd)
 
