@@ -4,8 +4,8 @@ Remove Fedora reference (fedora-loadmodules.service) from qubes-db.service syste
 @@ -1,6 +1,6 @@
  [Unit]
  Description=Qubes DB agent
--After=local-fs.target systemd-modules-load.service fedora-loadmodules.service
-+After=local-fs.target systemd-modules-load.service
+-After=systemd-modules-load.service fedora-loadmodules.service
++After=systemd-modules-load.service
  DefaultDependencies=no
  
  [Service]
