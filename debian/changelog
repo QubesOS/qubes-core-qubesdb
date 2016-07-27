@@ -1,3 +1,9 @@
+qubesdb (3.2.1-1) wheezy; urgency=medium
+
+  * systemd: drop dependency on local-fs.target
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 27 Jul 2016 02:35:57 +0200
+
 qubesdb (3.2.0-1) wheezy; urgency=medium
 
   [ Wojtek Porczyk ]
