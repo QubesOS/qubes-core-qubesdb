@@ -482,6 +482,7 @@ int init_server_socket(struct db_daemon_data *d) {
     char socket_address[MAX_FILE_PATH];
     struct sockaddr_un sockname;
     int s;
+    struct stat stat_buf;
     mode_t old_umask;
 
     if (d->remote_name) {
@@ -523,6 +524,8 @@ int init_server_socket(struct db_daemon_data *d) {
     }
     d->socket_fd = s;
     umask(old_umask);
+    if (stat(sockname.sun_path, &stat_buf))
+        d->socket_ino = stat_buf.st_ino;
     return 1;
 }
 
@@ -571,6 +574,7 @@ int create_pidfile(struct db_daemon_data *d) {
     char pidfile_name[256];
     FILE *pidfile;
     mode_t old_umask;
+    struct stat stat_buf;
 
     /* do not create pidfile for VM daemon - service is managed by systemd */
     if (!d->remote_name)
@@ -586,12 +590,15 @@ int create_pidfile(struct db_daemon_data *d) {
         return 0;
     }
     fprintf(pidfile, "%d\n", getpid());
+    if (fstat(fileno(pidfile), &stat_buf))
+        d->pidfile_ino = stat_buf.st_ino;
     fclose(pidfile);
     return 1;
 }
 
 void remove_pidfile(struct db_daemon_data *d) {
     char pidfile_name[256];
+    struct stat stat_buf;
 
     /* no pidfile for VM daemon - service is managed by systemd */
     if (!d->remote_name)
@@ -599,12 +606,17 @@ void remove_pidfile(struct db_daemon_data *d) {
     snprintf(pidfile_name, sizeof(pidfile_name),
             "/var/run/qubes/qubesdb.%s.pid", d->remote_name);
 
-    unlink(pidfile_name);
+    if (stat(pidfile_name, &stat_buf)) {
+        /* remove pidfile only if it's the one created this process */
+        if (d->pidfile_ino == stat_buf.st_ino)
+            unlink(pidfile_name);
+    }
 }
 
 void close_server_socket(struct db_daemon_data *d) {
     struct sockaddr_un sockname;
     socklen_t addrlen;
+    struct stat stat_buf;
 
     if (d->socket_fd < 0)
         /* already closed */
@@ -615,7 +627,11 @@ void close_server_socket(struct db_daemon_data *d) {
         return;
 
     close(d->socket_fd);
-    unlink(sockname.sun_path);
+    if (stat(sockname.sun_path, &stat_buf)) {
+        /* remove the socket only if it's the one created this process */
+        if (d->socket_ino == stat_buf.st_ino)
+            unlink(sockname.sun_path);
+    }
 }
 #endif // !WIN32
 

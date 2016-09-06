@@ -78,6 +78,9 @@ struct db_daemon_data {
 #else
     int socket_fd;              /* local server socket */
     struct client *client_list; /* local clients */
+    /* those two are to avoid removing not own files on termination */
+    int socket_ino;             /* socket file inode number */
+    int pidfile_ino;            /* pidfile inode number */
 #endif
     struct qubesdb *db;         /* database */
     int multiread_requested;    /* have requested multiread, if not - drop such
