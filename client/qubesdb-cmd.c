@@ -34,7 +34,7 @@ void encode_and_print_value(char *val) {
     }
     len = strlen(val);
     for (i = 0; i < len; i++) {
-        if (val[i] >= 0x20 && val[i] < 0x80)
+        if (val[i] >= 0x20 && (unsigned char)val[i] < 0x80)
             printf("%c", val[i]);
         else
 #ifndef WIN32
