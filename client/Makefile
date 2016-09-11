@@ -1,4 +1,4 @@
-CFLAGS += -I../include -g -Wall -Werror -pie
+CFLAGS += -I../include -g -Wall -Wextra -Werror -pie
 CFLAGS += -fPIC
 CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
 
