@@ -401,6 +401,8 @@ static PyObject *none(bool result)
     else {
         if (errno == EPIPE) {
             PyErr_SetString(qdb_disconnected_error, "QubesDB disconnected");
+        } else if (errno == EINTR) {
+            PyErr_SetFromErrno(PyExc_OSError);
         } else {
             PyErr_SetFromErrno(qdb_error);
         }
