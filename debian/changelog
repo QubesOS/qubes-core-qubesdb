@@ -1,3 +1,12 @@
+qubesdb (3.2.2-1) wheezy; urgency=medium
+
+  * daemon: remove pidfile and socket only when created by this instance
+  * client: fix signed/unsigned comparision, add -Wextra flag
+  * gitignore
+  * python: raise OSError on EINTR
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 05 Oct 2016 14:37:00 +0200
+
 qubesdb (3.2.1-1) wheezy; urgency=medium
 
   * systemd: drop dependency on local-fs.target
