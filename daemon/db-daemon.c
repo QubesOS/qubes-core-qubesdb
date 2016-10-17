@@ -524,7 +524,7 @@ int init_server_socket(struct db_daemon_data *d) {
     }
     d->socket_fd = s;
     umask(old_umask);
-    if (stat(sockname.sun_path, &stat_buf))
+    if (stat(sockname.sun_path, &stat_buf) == 0)
         d->socket_ino = stat_buf.st_ino;
     return 1;
 }
@@ -590,7 +590,7 @@ int create_pidfile(struct db_daemon_data *d) {
         return 0;
     }
     fprintf(pidfile, "%d\n", getpid());
-    if (fstat(fileno(pidfile), &stat_buf))
+    if (fstat(fileno(pidfile), &stat_buf) == 0)
         d->pidfile_ino = stat_buf.st_ino;
     fclose(pidfile);
     return 1;
@@ -606,7 +606,7 @@ void remove_pidfile(struct db_daemon_data *d) {
     snprintf(pidfile_name, sizeof(pidfile_name),
             "/var/run/qubes/qubesdb.%s.pid", d->remote_name);
 
-    if (stat(pidfile_name, &stat_buf)) {
+    if (stat(pidfile_name, &stat_buf) == 0) {
         /* remove pidfile only if it's the one created this process */
         if (d->pidfile_ino == stat_buf.st_ino)
             unlink(pidfile_name);
@@ -627,7 +627,7 @@ void close_server_socket(struct db_daemon_data *d) {
         return;
 
     close(d->socket_fd);
-    if (stat(sockname.sun_path, &stat_buf)) {
+    if (stat(sockname.sun_path, &stat_buf) == 0) {
         /* remove the socket only if it's the one created this process */
         if (d->socket_ino == stat_buf.st_ino)
             unlink(sockname.sun_path);
