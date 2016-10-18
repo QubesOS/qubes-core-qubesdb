@@ -1,3 +1,9 @@
+qubesdb (3.2.3-1) wheezy; urgency=medium
+
+  * daemon: fix removing pidfile and socket
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 18 Oct 2016 15:54:05 +0200
+
 qubesdb (3.2.2-1) wheezy; urgency=medium
 
   * daemon: remove pidfile and socket only when created by this instance
