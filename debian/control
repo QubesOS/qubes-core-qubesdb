@@ -2,7 +2,15 @@ Source: qubesdb
 Section: admin
 Priority: extra
 Maintainer: Jason Mehring <nrgaway@gmail.com>
-Build-Depends: debhelper (>= 9~), dh-python, dh-systemd, python-all (>= 2.6.6-3~), python-setuptools, quilt, libvchan-xen-dev, pkg-config
+Build-Depends:
+ debhelper (>= 9~),
+ dh-python,
+ dh-systemd,
+ python-all (>= 2.6.6-3~),
+ python-setuptools,
+ quilt,
+ libvchan-xen-dev,
+ pkg-config
 X-Python-Version: 2.7
 X-Qubes-Build-Depends-wheezy: libsystemd-daemon-dev, python-dev
 X-Qubes-Build-Depends-jessie: libsystemd-dev, libpython2.7-dev
