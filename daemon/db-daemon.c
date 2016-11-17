@@ -705,7 +705,7 @@ int main(int argc, char **argv) {
 
                 close(0);
                 old_umask = umask(0);
-                log_fd = open(log_path, O_WRONLY | O_CREAT, 0664);
+                log_fd = open(log_path, O_WRONLY | O_CREAT | O_APPEND, 0664);
                 umask(old_umask);
                 if (log_fd < 0) {
                     perror("open logfile");
