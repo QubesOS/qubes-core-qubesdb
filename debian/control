@@ -34,7 +34,7 @@ Description: QubesDB VM service.
 Package: libqubesdb
 Section: libs
 Architecture: amd64
-Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: QubesDB libs.
 
 Package: qubesdb-dev
@@ -42,3 +42,10 @@ Section: libdevel
 Architecture: amd64
 Depends: libqubesdb (= ${binary:Version}), ${misc:Depends}
 Description: QubesDB client header files.
+
+Package: python-qubesdb
+Section: python
+Architecture: amd64
+Depends: libqubesdb (= ${binary:Version}), ${shlibs:Depends}, ${python:Depends}, ${misc:Depends}
+Provides: ${python:Provides}
+Description: QubesDB python bindings.

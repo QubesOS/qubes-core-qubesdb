@@ -18,6 +18,6 @@ override_dh_auto_build:
 	make all
 
 override_dh_auto_install:
-	make install DESTDIR=$(DESTDIR) LIBDIR=/usr/lib BINDIR=/usr/bin SBINDIR=/usr/sbin
+	make install DESTDIR=$(DESTDIR) PYTHON_PREFIX_ARG=--install-layout=deb LIBDIR=/usr/lib BINDIR=/usr/bin SBINDIR=/usr/sbin
 	mkdir -p $(DESTDIR)/lib/systemd/system
 	install -p -m 644 daemon/qubes-db.service $(DESTDIR)/lib/systemd/system
