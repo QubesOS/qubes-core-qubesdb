@@ -1,3 +1,19 @@
+qubesdb (4.0.0-1) wheezy; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * python: Move QubesDB out of "qubes" package.
+
+  [ Wojtek Porczyk ]
+  * qubesdb-read-bool: Interpret a value as boolean
+
+  [ Marek Marczykowski-Górecki ]
+  * daemon: append the log instead of overriding
+  * debian: fix dependencies for ubuntu package build
+  * debian: reformat Build-Depends
+  * debian: move python bindings to separate package
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 18 Nov 2016 02:45:23 +0100
+
 qubesdb (3.2.3-1) wheezy; urgency=medium
 
   * daemon: fix removing pidfile and socket
