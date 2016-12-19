@@ -17,6 +17,11 @@ all:
 	$(MAKE) -C client
 	$(MAKE) -C python
 
+clean:
+	$(MAKE) -C daemon clean
+	$(MAKE) -C client clean
+	$(MAKE) -C python clean
+
 install:
 	$(MAKE) -C daemon install
 	$(MAKE) -C client install
