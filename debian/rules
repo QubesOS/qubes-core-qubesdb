@@ -4,8 +4,6 @@
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-# Disable fortify hardening to prevent build error
-export DEB_BUILD_MAINT_OPTIONS=hardening=-fortify
 include /usr/share/dpkg/default.mk
 
 export DESTDIR=$(PWD)/debian/tmp
