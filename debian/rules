@@ -8,16 +8,23 @@
 export DEB_BUILD_MAINT_OPTIONS=hardening=-fortify
 include /usr/share/dpkg/default.mk
 
-export DESTDIR=$(shell readlink -m .)/debian/tmp
+export DESTDIR=$(PWD)/debian/tmp
 
 %:
-	dh $@ --with python2,systemd 
+	dh $@ --with python2,python3,systemd
 
 override_dh_auto_build:
 	dh_clean --keep
 	make all
+	for pyver in `py3versions -vr`; do \
+		make -C python PYTHON=python$$pyver; \
+	done
 
 override_dh_auto_install:
-	make install DESTDIR=$(DESTDIR) PYTHON_PREFIX_ARG=--install-layout=deb LIBDIR=/usr/lib BINDIR=/usr/bin SBINDIR=/usr/sbin
+	make install PYTHON=python2 DESTDIR=$(DESTDIR) PYTHON_PREFIX_ARG=--install-layout=deb LIBDIR=/usr/lib BINDIR=/usr/bin SBINDIR=/usr/sbin
+	for pyver in `py3versions -vr`; do \
+		make -C python install PYTHON=python$$pyver DESTDIR=$(DESTDIR) \
+			PYTHON_PREFIX_ARG=--install-layout=deb; \
+	done
 	mkdir -p $(DESTDIR)/lib/systemd/system
 	install -p -m 644 daemon/qubes-db.service $(DESTDIR)/lib/systemd/system

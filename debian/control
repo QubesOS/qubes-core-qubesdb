@@ -7,6 +7,7 @@ Build-Depends:
  dh-python,
  dh-systemd,
  python-all (>= 2.6.6-3~),
+ python3-all-dev,
  python-setuptools,
  quilt,
  libvchan-xen-dev,
@@ -48,4 +49,11 @@ Section: python
 Architecture: amd64
 Depends: libqubesdb (= ${binary:Version}), ${shlibs:Depends}, ${python:Depends}, ${misc:Depends}
 Provides: ${python:Provides}
+Description: QubesDB python bindings.
+
+Package: python3-qubesdb
+Section: python
+Architecture: amd64
+Depends: libqubesdb (= ${binary:Version}), ${shlibs:Depends}, ${python3:Depends}, ${misc:Depends}
+Provides: ${python3:Provides}
 Description: QubesDB python bindings.
