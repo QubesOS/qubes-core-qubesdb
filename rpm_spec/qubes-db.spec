@@ -42,6 +42,7 @@ URL:		http://www.qubes-os.org/
 BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
 BuildRequires:	systemd-devel
 BuildRequires:	python-devel
+BuildRequires:	python3-devel
 Requires:	qubes-libvchan-%{backend_vmm}
 # XXX: VMM specific
 Requires:   xen-libs >= 2001:4.6.1-20
@@ -66,6 +67,22 @@ Requires:	qubes-db-libs
 %description devel
 Header files for QubesDB client library and daemon protocol.
 
+%package -n python2-qubesdb
+Summary:    Python2 bindings for QubesDB
+Requires:   qubes-db-libs
+%{?python_provide:%python_provide python2-qubesdb}
+
+%description -n python2-qubesdb
+Python bindings for QubesDB
+
+%package -n python3-qubesdb
+Summary:    Python3 bindings for QubesDB
+Requires:   qubes-db-libs
+%{?python_provide:%python_provide python3-qubesdb}
+
+%description -n python3-qubesdb
+Python3 bindings for QubesDB
+
 %prep
 # we operate on the current directory, so no need to unpack anything
 # symlink is to generate useful debuginfo packages
@@ -74,11 +91,22 @@ ln -sf . %{name}-%{version}
 %setup -T -D
 
 %build
-make %{?_smp_mflags} all
+make %{?_smp_mflags} PYTHON=%{__python2} all
+make %{?_smp_mflags} PYTHON=%{__python3} -C python all
 
 %install
-make install DESTDIR=%{buildroot} LIBDIR=%{_libdir} BINDIR=%{_bindir} SBINDIR=%{_sbindir}
-
+make install \
+         PYTHON=%{__python2} \
+         DESTDIR=%{buildroot} \
+         LIBDIR=%{_libdir} \
+         BINDIR=%{_bindir} \
+         SBINDIR=%{_sbindir}
+make -C python install \
+         PYTHON=%{__python3} \
+         DESTDIR=%{buildroot} \
+         LIBDIR=%{_libdir} \
+         BINDIR=%{_bindir} \
+         SBINDIR=%{_sbindir}
 
 %files
 %doc
@@ -94,8 +122,14 @@ make install DESTDIR=%{buildroot} LIBDIR=%{_libdir} BINDIR=%{_bindir} SBINDIR=%{
 
 %files libs
 %{_libdir}/libqubesdb.so
-%{python_sitearch}/QubesDB-*egg-info
-%{python_sitearch}/qubesdb.so
+
+%files -n python2-qubesdb
+%{python2_sitearch}/QubesDB-*egg-info
+%{python2_sitearch}/qubesdb.so
+
+%files -n python3-qubesdb
+%{python3_sitearch}/QubesDB-*egg-info
+%{python3_sitearch}/qubesdb.*.so
 
 %files devel
 /usr/include/qubesdb.h
