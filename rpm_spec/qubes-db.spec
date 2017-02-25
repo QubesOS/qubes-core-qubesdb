@@ -24,9 +24,6 @@
 
 %{!?version: %define version %(cat version)}
 %{!?backend_vmm: %define backend_vmm %(echo $BACKEND_VMM)}
-%if "%(echo $PACKAGE_SET)" == "dom0"
-%define install_dom0_service 1
-%endif
 
 %{!?python_sitearch: %define python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)")}
 
