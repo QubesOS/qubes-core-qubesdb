@@ -1,3 +1,20 @@
+qubesdb (3.2.4-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * daemon: append the log instead of overriding
+  * debian: fix dependencies for ubuntu package build
+  * debian: reformat Build-Depends
+  * travis: drop debootstrap workaround
+
+  [ unman ]
+  * Fix Depends for trusty build
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: do not disable hardening
+  * rpm: remove obsolete code
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 03 Mar 2017 04:20:23 +0100
+
 qubesdb (3.2.3-1) wheezy; urgency=medium
 
   * daemon: fix removing pidfile and socket
