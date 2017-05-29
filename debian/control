@@ -30,7 +30,7 @@ Description: QubesDB management tools and daemon.
 Package: qubesdb-vm
 Section: admin
 Architecture: amd64
-Depends: qubesdb, libxen-4.6 (>= 2001:4.6.1-20), ${misc:Depends}
+Depends: qubesdb, ${misc:Depends}
 Description: QubesDB VM service.
 
 Package: libqubesdb
