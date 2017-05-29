@@ -1,3 +1,23 @@
+qubesdb (4.0.1-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * makefile: add 'clean' target
+  * travis: drop debootstrap workaround
+  * Add python3 bindings
+  * rpm: add python3 packaging, split python2 bindings into separate
+    package
+  * debian: add python3 packaging
+  * debian: do not disable hardening
+  * rpm: remove obsolete code
+
+  [ unman ]
+  * Fix Depends for trusty build
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: update for Qubes 4.0
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 29 May 2017 03:19:58 +0200
+
 qubesdb (4.0.0-1) wheezy; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
