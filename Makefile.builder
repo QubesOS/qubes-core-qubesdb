@@ -22,10 +22,7 @@ ifeq ($(PACKAGE_SET),vm)
   WIN_PREBUILD_CMD = set_version.bat && powershell -executionpolicy bypass set_version.ps1
 endif
 
-source-debian-quilt-copy-in: VERSION = $(shell cat $(ORIG_SRC)/version)
-source-debian-quilt-copy-in: ORIG_FILE = "$(CHROOT_DIR)/$(DIST_SRC)/../qubesdb_$(VERSION).orig.tar.gz"
 source-debian-quilt-copy-in:
-	-$(shell $(ORIG_SRC)/debian-quilt $(ORIG_SRC)/series-debian-vm.conf $(CHROOT_DIR)/$(DIST_SRC)/debian/patches)
-	tar cfz $(ORIG_FILE) --exclude-vcs --exclude=rpm --exclude=pkgs --exclude=deb --exclude=debian -C $(CHROOT_DIR)/$(DIST_SRC) .
+	$(shell $(ORIG_SRC)/debian-quilt $(ORIG_SRC)/series-debian-vm.conf $(CHROOT_DIR)/$(DIST_SRC)/debian/patches)
 
 # vim: filetype=make
