@@ -1,3 +1,10 @@
+qubesdb (4.0.2-1) unstable; urgency=medium
+
+  * debian: fix dependencies
+  * debian: drop non-deterministing orig.tar.gz creation
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 10 Jun 2017 12:18:54 +0200
+
 qubesdb (4.0.1-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
