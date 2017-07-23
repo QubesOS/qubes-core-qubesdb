@@ -173,7 +173,7 @@ static PyObject *qdbpy_list(QdbHandle *self, PyObject *args)
         PyObject *val = PyList_New(list_len);
         for (i = 0; i < list_len; i++) {
 #if PY_VERSION_HEX >= 0x03000000
-            PyList_SetItem(val, i, PyBytes_FromString(list[i]));
+            PyList_SetItem(val, i, PyUnicode_FromString(list[i]));
 #else
             PyList_SetItem(val, i, PyString_FromString(list[i]));
 #endif
@@ -308,7 +308,7 @@ static PyObject *qdbpy_read_watch(QdbHandle *self, PyObject *args)
     }
     /* Create string object. */
 #if PY_VERSION_HEX >= 0x03000000
-    val = PyBytes_FromString(watch_path);
+    val = PyUnicode_FromString(watch_path);
 #else
     val = PyString_FromString(watch_path);
 #endif
