@@ -1,3 +1,9 @@
+qubesdb (4.0.3-1) unstable; urgency=medium
+
+  * python3: use unicode as return type for paths
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 29 Jul 2017 05:19:07 +0200
+
 qubesdb (4.0.2-1) unstable; urgency=medium
 
   * debian: fix dependencies
