@@ -39,7 +39,11 @@ URL:		http://www.qubes-os.org/
 BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
 BuildRequires:	systemd-devel
 BuildRequires:	python-devel
-BuildRequires:	python3-devel
+%if 0%{?rhel} >= 7
+BuildRequires: python34-devel
+%else
+BuildRequires: python3-devel
+%endif
 Requires:	qubes-libvchan-%{backend_vmm}
 # XXX: VMM specific
 Requires:   xen-libs >= 2001:4.6.1-20
@@ -72,6 +76,15 @@ Requires:   qubes-db-libs
 %description -n python2-qubesdb
 Python bindings for QubesDB
 
+%if 0%{?rhel} >= 7
+%package -n python34-qubesdb
+Summary:    Python34 bindings for QubesDB
+Requires:   qubes-db-libs
+%{?python_provide:%python_provide python34-qubesdb}
+
+%description -n python34-qubesdb
+Python34 bindings for QubesDB
+%else
 %package -n python3-qubesdb
 Summary:    Python3 bindings for QubesDB
 Requires:   qubes-db-libs
@@ -79,6 +92,7 @@ Requires:   qubes-db-libs
 
 %description -n python3-qubesdb
 Python3 bindings for QubesDB
+%endif
 
 %prep
 # we operate on the current directory, so no need to unpack anything
@@ -124,7 +138,11 @@ make -C python install \
 %{python2_sitearch}/QubesDB-*egg-info
 %{python2_sitearch}/qubesdb.so
 
+%if 0%{?rhel} >= 7
+%files -n python34-qubesdb
+%else
 %files -n python3-qubesdb
+%endif
 %{python3_sitearch}/QubesDB-*egg-info
 %{python3_sitearch}/qubesdb.*.so
 
