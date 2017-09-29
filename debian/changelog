@@ -1,3 +1,10 @@
+qubesdb (4.0.4-1) unstable; urgency=medium
+
+  [ Frédéric Pierret ]
+  * Fix CentOS dependencies: python3
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 29 Sep 2017 22:50:28 +0200
+
 qubesdb (4.0.3-1) unstable; urgency=medium
 
   * python3: use unicode as return type for paths
