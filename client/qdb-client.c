@@ -438,8 +438,10 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
             free_path_list(plist);
             return NULL;
         }
-        /* TODO: QDB_RESP_ERROR ? (current daemon do not send such response to
-         * list */
+        if (hdr.type == QDB_RESP_ERROR) {
+            free_path_list(plist);
+            return NULL;
+        }
         assert(hdr.type == QDB_RESP_LIST);
         if (!hdr.path[0])
             /* end of list */
