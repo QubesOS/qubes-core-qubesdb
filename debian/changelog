@@ -1,3 +1,9 @@
+qubesdb (4.0.5-1) unstable; urgency=medium
+
+  * Fix handling qdb_list errors
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 04 Oct 2017 14:58:23 +0200
+
 qubesdb (4.0.4-1) unstable; urgency=medium
 
   [ Frédéric Pierret ]
