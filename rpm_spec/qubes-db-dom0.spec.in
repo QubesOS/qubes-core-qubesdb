@@ -22,13 +22,11 @@
 #
 #
 
-%{!?version: %define version %(cat version)}
-
 # Package contains /usr/lib, but not binary files, which confuses find-debuginfo.sh script.
 %global debug_package %{nil}
 
-Name:		qubes-db-vm
-Version:	%{version}
+Name:		qubes-db-dom0
+Version:	@VERSION@
 Release:	1%{?dist}
 Summary:	QubesDB VM service
 
@@ -39,36 +37,34 @@ URL:		http://www.qubes-os.org/
 Requires:	qubes-db
 Requires(post): /bin/systemctl
 
+Source0: qubes-db-%{version}.tar.gz
+
+%define _sourcedir %(pwd)
 %define _builddir %(pwd)
 
 %description
 QubesDB daemon service.
 
 %prep
-# we operate on the current directory, so no need to unpack anything
-# symlink is to generate useful debuginfo packages
-rm -f %{name}-%{version}
-ln -sf . %{name}-%{version}
-%setup -T -D
+%setup -q -n qubes-db-%{version}
 
 %build
 
 %install
 install -d %{buildroot}%{_unitdir}
-install -p -m 644 daemon/qubes-db.service %{buildroot}%{_unitdir}/
+install -p -m 644 daemon/qubes-db-dom0.service %{buildroot}%{_unitdir}/
 
 %post
-systemctl enable qubes-db.service > /dev/null
+systemctl enable qubes-db-dom0.service > /dev/null
 
 %preun
 if [ $1 -eq 0 ]; then
-    systemctl disable qubes-db.service > /dev/null
+    systemctl disable qubes-db-dom0.service > /dev/null
 fi
-
 
 %files
 %doc
-%{_unitdir}/qubes-db.service
+%{_unitdir}/qubes-db-dom0.service
 
 %changelog
 

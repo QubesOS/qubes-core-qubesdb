@@ -22,13 +22,10 @@
 #
 #
 
-%{!?version: %define version %(cat version)}
-%{!?backend_vmm: %define backend_vmm %(echo $BACKEND_VMM)}
-
 %{!?python_sitearch: %define python_sitearch %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib(1)")}
 
 Name:		qubes-db
-Version:	%{version}
+Version:	@VERSION@
 Release:	1%{?dist}
 Summary:	QubesDB tools
 
@@ -36,13 +33,20 @@ Group:		Qubes
 License:	GPL
 URL:		http://www.qubes-os.org/
 
-BuildRequires:	qubes-libvchan-%{backend_vmm}-devel
+BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
 BuildRequires:	systemd-devel
 BuildRequires:	python-devel
-Requires:	qubes-libvchan-%{backend_vmm}
+%if 0%{?rhel} >= 7
+BuildRequires: python34-devel
+%else
+BuildRequires: python3-devel
+%endif
+Requires:	qubes-libvchan-@BACKEND_VMM@
 # XXX: VMM specific
 Requires:   xen-libs >= 2001:4.6.1-20
+Source0:    %{name}-%{version}.tar.gz
 
+%define _sourcedir %(pwd)
 %define _builddir %(pwd)
 
 %description
@@ -64,11 +68,7 @@ Requires:	qubes-db-libs
 Header files for QubesDB client library and daemon protocol.
 
 %prep
-# we operate on the current directory, so no need to unpack anything
-# symlink is to generate useful debuginfo packages
-rm -f %{name}-%{version}
-ln -sf . %{name}-%{version}
-%setup -T -D
+%setup -q 
 
 %build
 make %{?_smp_mflags} all
