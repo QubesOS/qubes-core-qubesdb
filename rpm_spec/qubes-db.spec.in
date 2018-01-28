@@ -46,10 +46,6 @@ Requires:	qubes-libvchan-@BACKEND_VMM@
 Requires:   xen-libs >= 2001:4.6.1-20
 Source0:    %{name}-%{version}.tar.gz
 
-%if 0%{?qubes_builder}
-%define _builddir %(pwd)
-%endif
-
 %description
 QubesDB management tools and daemon.
 

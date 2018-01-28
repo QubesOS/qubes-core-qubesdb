@@ -39,10 +39,6 @@ Requires(post): /bin/systemctl
 
 Source0: qubes-db-%{version}.tar.gz
 
-%if 0%{?qubes_builder}
-%define _builddir %(pwd)
-%endif
-
 %description
 QubesDB daemon service.
 
