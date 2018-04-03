@@ -143,4 +143,4 @@ make -C python install \
 /usr/include/qubesdb-client.h
 
 %changelog
-
+@CHANGELOG@

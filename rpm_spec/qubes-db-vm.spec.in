@@ -65,4 +65,4 @@ fi
 %{_unitdir}/qubes-db.service
 
 %changelog
-
+@CHANGELOG@
