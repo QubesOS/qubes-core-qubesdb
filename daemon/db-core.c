@@ -84,11 +84,11 @@ struct qubesdb_entry *qubesdb_insert(struct qubesdb *db, char *path) {
         /* entry already exists */
         return entry;
     } else {
-        new_entry = malloc(sizeof(*new_entry));
+        new_entry = calloc(1,sizeof(*new_entry));
         if (!new_entry)
             return NULL;
 #ifndef WIN32
-        strncpy(new_entry->path, path, QDB_MAX_PATH);
+        strncpy(new_entry->path, path, QDB_MAX_PATH - 1);
 #else
         StringCbCopyA(new_entry->path, sizeof(new_entry->path), path);
 #endif
@@ -153,7 +153,7 @@ int qubesdb_add_watch(struct qubesdb *db, char *path,
         struct client *client) {
     struct qubesdb_watch *new_watch;
 
-    new_watch = malloc(sizeof(*new_watch));
+    new_watch = calloc(1,sizeof(*new_watch));
     if (!new_watch) {
         return 0;
     }
@@ -162,7 +162,7 @@ int qubesdb_add_watch(struct qubesdb *db, char *path,
     new_watch->client = client;
     /* path already verified by caller */
 #ifndef WIN32
-    strncpy(new_watch->path, path, QDB_MAX_PATH);
+    strncpy(new_watch->path, path, QDB_MAX_PATH - 1);
 #else
     StringCbCopyA(new_watch->path, sizeof(new_watch->path), path);
 #endif
@@ -213,7 +213,8 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
         if (strncmp(watch->path, path, watch->cmp_len) == 0) {
             hdr.type = QDB_RESP_WATCH;
 #ifndef WIN32
-            strncpy(hdr.path, path, sizeof(hdr.path));
+            strncpy(hdr.path, path, sizeof(hdr.path) - 1);
+            hdr.path[sizeof(hdr.path) - 1] = '\0';
 #else
             StringCbCopyA(hdr.path, sizeof(hdr.path), path);
 #endif
