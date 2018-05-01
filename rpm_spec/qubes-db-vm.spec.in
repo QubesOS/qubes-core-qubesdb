@@ -36,6 +36,8 @@ URL:		http://www.qubes-os.org/
 
 Requires:	qubes-db
 Requires(post): /bin/systemctl
+%{?systemd_requires}
+BuildRequires: systemd
 
 Source0: qubes-db-%{version}.tar.gz
 
@@ -52,13 +54,13 @@ install -d %{buildroot}%{_unitdir}
 install -p -m 644 daemon/qubes-db.service %{buildroot}%{_unitdir}/
 
 %post
-systemctl enable qubes-db.service > /dev/null
+%systemd_post qubes-db.service
 
 %preun
-if [ $1 -eq 0 ]; then
-    systemctl disable qubes-db.service > /dev/null
-fi
+%systemd_preun qubes-db.service
 
+%postun
+%systemd_postun_with_restart qubes-db.service
 
 %files
 %doc
