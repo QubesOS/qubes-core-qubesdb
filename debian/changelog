@@ -1,3 +1,23 @@
+qubesdb (4.0.6-1) unstable; urgency=medium
+
+  [ Olivier MEDOC ]
+  * archlinux: build both python2 and python3 bindings
+
+  [ Frédéric Pierret ]
+  * Create spec.in and add Source0
+  * remove _sourcedir (put in Makefile-legacy.fedora) and isolate
+    _builderdir
+  * Remove _builddir
+  * spec.in: add changelog placeholder
+  * Fix GCC8 warnings:
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: update Fedora versions
+  * rpm: fix packaging
+  * travis: add centos7
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 01 May 2018 19:47:02 +0200
+
 qubesdb (4.0.5-1) unstable; urgency=medium
 
   * Fix handling qdb_list errors
