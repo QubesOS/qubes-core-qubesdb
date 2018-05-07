@@ -1,3 +1,19 @@
+qubesdb (3.2.5-1) unstable; urgency=medium
+
+  [ Frédéric Pierret ]
+  * Create spec.in and add Source0
+  * remove _sourcedir (put in Makefile-legacy.fedora) and isolate
+    _builderdir
+  * Remove _builddir
+  * spec.in: add changelog placeholder
+  * Fix GCC8 warnings:
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: update Fedora versions, add CentOS
+  * Fix handling qdb_list errors
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 07 May 2018 05:16:39 +0200
+
 qubesdb (3.2.4-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
