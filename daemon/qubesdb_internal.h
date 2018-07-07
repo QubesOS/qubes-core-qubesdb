@@ -15,9 +15,11 @@
 typedef int client_socket_t;
 #define INVALID_CLIENT_SOCKET -1
 #define SERVER_SOCKET_BACKLOG 5
+#define CLIENT_SOCKET_FORMAT "%d"
+#else
+#define CLIENT_SOCKET_FORMAT "%lld"
 #endif
 
-#define CLIENT_SOCKET_FORMAT "%d"
 #define QUBESDB_VCHAN_PORT 111
 
 #define MAX_FILE_PATH 256
