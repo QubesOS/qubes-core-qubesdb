@@ -18,40 +18,43 @@
       <Platform>x64</Platform>
     </ProjectConfiguration>
   </ItemGroup>
+
   <PropertyGroup Label="Globals">
-    <ProjectGuid>{10C413BF-C441-41C3-841D-0171424CC05A}</ProjectGuid>
+    <ProjectGuid>{4E1901B3-2AF6-4AC6-828A-98AE29AB28A6}</ProjectGuid>
     <Keyword>Win32Proj</Keyword>
-    <RootNamespace>qubesdbdaemon</RootNamespace>
+    <RootNamespace>qubesdbclient</RootNamespace>
   </PropertyGroup>
+
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
   <PropertyGroup Label="Configuration">
-    <ConfigurationType>Application</ConfigurationType>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
     <CharacterSet>Unicode</CharacterSet>
   </PropertyGroup>
-  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
   <ImportGroup Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="..\common.props" />
   </ImportGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
   <PropertyGroup Label="UserMacros" />
+
   <ItemDefinitionGroup>
     <ClCompile>
-      <PreprocessorDefinitions>_CONSOLE;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_WINDOWS;_USRDLL;QUBESDBCLIENT_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
-      <SubSystem>Console</SubSystem>
-      <AdditionalDependencies>libvchan.lib;windows-utils.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <SubSystem>Windows</SubSystem>
+      <AdditionalDependencies>windows-utils.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
+
   <ItemGroup>
-    <ClCompile Include="..\..\..\daemon\buffer.c" />
-    <ClCompile Include="..\..\..\daemon\db-cmds.c" />
-    <ClCompile Include="..\..\..\daemon\db-core.c" />
-    <ClCompile Include="..\..\..\daemon\db-daemon.c" />
+    <ClCompile Include="..\..\..\client\qdb-client.c" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\..\daemon\buffer.h" />
-    <ClInclude Include="..\..\..\daemon\qubesdb_internal.h" />
+    <ClInclude Include="..\..\..\include\qubesdb-client.h" />
     <ClInclude Include="..\..\..\include\qubesdb.h" />
   </ItemGroup>
   <ItemGroup>

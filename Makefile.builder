@@ -15,11 +15,12 @@ endif
 
 ifeq ($(PACKAGE_SET),vm)
   WIN_SOURCE_SUBDIRS := windows
+  WIN_SLN_DIR := vs2017
   WIN_COMPILER := msbuild
   WIN_OUTPUT_LIBS = bin
   WIN_OUTPUT_HEADERS = ../include
   WIN_BUILD_DEPS = core-vchan-$(BACKEND_VMM) windows-utils
-  WIN_PREBUILD_CMD = set_version.bat && powershell -executionpolicy bypass set_version.ps1
+  WIN_PREBUILD_CMD = set_version.bat && powershell -executionpolicy bypass -File set_version.ps1 < nul
 endif
 
 source-debian-quilt-copy-in:
