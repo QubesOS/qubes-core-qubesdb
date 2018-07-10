@@ -14,6 +14,7 @@
   <PropertyGroup Label="Configuration">
     <LinkIncremental>false</LinkIncremental>
     <PlatformToolset>v141</PlatformToolset>
+    <WindowsTargetPlatformVersion>$([Microsoft.Build.Utilities.ToolLocationHelper]::GetLatestSDKTargetPlatformVersion('Windows', '10.0'))</WindowsTargetPlatformVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'" Label="Configuration">
