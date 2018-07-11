@@ -1,3 +1,9 @@
+qubesdb (4.0.8-1) unstable; urgency=medium
+
+  * daemon: fix error message format string
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 11 Jul 2018 23:11:32 +0200
+
 qubesdb (4.0.7-1) unstable; urgency=medium
 
   * windows: fix few compile warnings
