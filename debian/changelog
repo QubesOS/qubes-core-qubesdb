@@ -1,3 +1,11 @@
+qubesdb (4.0.7-1) unstable; urgency=medium
+
+  * windows: fix few compile warnings
+  * windows: update for vs2017
+  * windows: automatically determine newest SDK version
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 11 Jul 2018 21:31:19 +0200
+
 qubesdb (4.0.6-1) unstable; urgency=medium
 
   [ Olivier MEDOC ]
