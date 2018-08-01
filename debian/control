@@ -6,18 +6,15 @@ Build-Depends:
  debhelper (>= 9~),
  dh-python,
  dh-systemd,
+ libsystemd-dev | libsystemd-daemon-dev,
  python-all (>= 2.6.6-3~),
+ python2.7-dev,
  python3-all-dev,
  python-setuptools,
  quilt,
  libvchan-xen-dev,
  pkg-config
 X-Python-Version: 2.7
-X-Qubes-Build-Depends-wheezy: libsystemd-daemon-dev, python-dev
-X-Qubes-Build-Depends-jessie: libsystemd-dev, libpython2.7-dev
-X-Qubes-Build-Depends-stretch: libsystemd-dev, libpython2.7-dev
-X-Qubes-Build-Depends-trusty: libsystemd-daemon-dev, libpython2.7-dev
-X-Qubes-Build-Depends-xenial: libsystemd-dev, libpython2.7-dev
 Standards-Version: 3.9.5
 Homepage: http://www.qubes-os.org
 
