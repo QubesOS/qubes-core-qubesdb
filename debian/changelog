@@ -1,3 +1,15 @@
+qubesdb (4.0.9-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm: use build flags provided by the distribution
+  * travis: add fc28 and buster
+  * debian: unify Build-Depends
+
+  [ unman ]
+  * Remove wheezy and trusty builds. Consolidate Build-Depends
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 07 Sep 2018 00:56:02 +0200
+
 qubesdb (4.0.8-1) unstable; urgency=medium
 
   * daemon: fix error message format string
