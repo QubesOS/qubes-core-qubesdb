@@ -34,6 +34,7 @@ Group:		Qubes
 License:	GPL
 URL:		http://www.qubes-os.org/
 
+BuildRequires: systemd-devel
 Requires:	qubes-db
 Requires(post): /bin/systemctl
 
