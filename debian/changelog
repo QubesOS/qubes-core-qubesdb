@@ -1,3 +1,11 @@
+qubesdb (4.0.10-1) unstable; urgency=medium
+
+  * rpm: add missing BR: systemd-devel
+  * rpm: add BR: gcc
+  * travis: add fc29
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 08 Oct 2018 23:18:29 +0200
+
 qubesdb (4.0.9-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
