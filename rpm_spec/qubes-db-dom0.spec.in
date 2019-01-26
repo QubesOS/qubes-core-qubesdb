@@ -35,6 +35,7 @@ License:	GPL
 URL:		http://www.qubes-os.org/
 
 BuildRequires: systemd-devel
+Requires:	xen-libs >= 2001:4.6.1-20
 Requires:	qubes-db
 Requires(post): /bin/systemctl
 

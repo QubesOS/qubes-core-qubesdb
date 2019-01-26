@@ -34,6 +34,7 @@ Group:		Qubes
 License:	GPL
 URL:		http://www.qubes-os.org/
 
+Requires:	xen-libs
 Requires:	qubes-db
 Requires(post): /bin/systemctl
 %{?systemd_requires}
