@@ -43,8 +43,6 @@ BuildRequires: python34-devel
 BuildRequires: python3-devel
 %endif
 Requires:	qubes-libvchan-@BACKEND_VMM@
-# XXX: VMM specific
-Requires:   xen-libs >= 2001:4.6.1-20
 Source0:    %{name}-%{version}.tar.gz
 
 %description
