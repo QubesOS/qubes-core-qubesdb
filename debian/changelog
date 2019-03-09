@@ -1,3 +1,10 @@
+qubesdb (4.1.0-1) unstable; urgency=medium
+
+  * rpm: drop direct xen-libs dependency
+  * travis: update to R4.1
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 09 Mar 2019 03:33:47 +0100
+
 qubesdb (4.0.10-1) unstable; urgency=medium
 
   * rpm: add missing BR: systemd-devel
