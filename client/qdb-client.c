@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #ifdef WIN32
 #include <windows.h>
-#include <Lmcons.h>
+#include <lmcons.h>
 #include <strsafe.h>
 #include <log.h>
 #include <qubes-io.h>

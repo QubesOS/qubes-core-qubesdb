@@ -13,7 +13,7 @@
 #else
 #include <windows.h>
 #include <sddl.h>
-#include <Lmcons.h>
+#include <lmcons.h>
 #include <strsafe.h>
 
 #include <log.h>
