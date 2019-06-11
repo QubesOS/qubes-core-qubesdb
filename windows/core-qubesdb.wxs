@@ -11,7 +11,7 @@
 
                 <DirectoryRef Id='BinDir'>
                     <Component Id='QubesDbDaemon' Guid='{1CE95F90-FBD1-4D1D-B955-C31D42F84D3C}'>
-                        <File Id='QdbDaemon' Source='bin\$(env.DDK_ARCH)\qubesdb-daemon.exe' KeyPath='yes'/>
+                        <File Id='QdbDaemon' Source='$(env.QUBES_BIN)\qubesdb-daemon.exe' KeyPath='yes'/>
                         <ServiceInstall
                         Id='QdbService'
                         Type='ownProcess'
@@ -37,8 +37,8 @@
                 </DirectoryRef>
     <DirectoryRef Id='$(var.SYSDIR)'>
         <Component Id='QubesDbClient' Guid='{E9742F11-6E77-44FC-8A53-168BE2D9273A}'>
-            <File Id='QdbClient' Source='bin\$(env.DDK_ARCH)\qubesdb-client.dll' KeyPath='yes'/>
-            <File Id='QdbCmd' Source='bin\$(env.DDK_ARCH)\qubesdb-cmd.exe'/>
+            <File Id='QdbClient' Source='$(env.QUBES_BIN)\qubesdb-client.dll' KeyPath='yes'/>
+            <File Id='QdbCmd' Source='$(env.QUBES_BIN)\qubesdb-cmd.exe'/>
         </Component>
     </DirectoryRef>
 
