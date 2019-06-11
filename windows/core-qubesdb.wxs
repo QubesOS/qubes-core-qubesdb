@@ -9,7 +9,7 @@
 
 <Fragment>
 
-                <DirectoryRef Id='BinDir' Name='bin'>
+                <DirectoryRef Id='BinDir'>
                     <Component Id='QubesDbDaemon' Guid='{1CE95F90-FBD1-4D1D-B955-C31D42F84D3C}'>
                         <File Id='QdbDaemon' Source='bin\$(env.DDK_ARCH)\qubesdb-daemon.exe' KeyPath='yes'/>
                         <ServiceInstall
