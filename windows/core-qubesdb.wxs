@@ -2,52 +2,14 @@
 <Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
 
 <?if $(env.DDK_ARCH) = x64 ?>
-    <?define PFILESDIR = ProgramFiles64Folder ?>
     <?define SYSDIR = System64Folder ?>
 <?else?>
-    <?define PFILESDIR = ProgramFilesFolder ?>
     <?define SYSDIR = SystemFolder ?>
 <?endif ?>
 
-<Module
-Id='CoreQubesDb'
-Language='1033'
-Codepage='1252'
-Version='$(env.VERSION)'
->
+<Fragment>
 
-<Package
-Id='{2F4791B0-D713-460B-B810-1C89E55E93A2}'
-Description='Qubes database'
-Manufacturer='Invisible Things Lab'
-InstallScope='perMachine'
-InstallerVersion='200'
-Languages='1033'
-SummaryCodepage='1252'
-InstallPrivileges='elevated'
-/>
-
-<Configuration
-Name='ProductFolder'
-Format='Key'
-Type='Identifier'
-DefaultValue='QubesProgramFilesDir'
-Description='Installation directory'
-DisplayName='Installation directory'
-/>
-
-<Substitution
-Table='Directory'
-Column='Directory_Parent'
-Row='BinDir'
-Value='[=ProductFolder]'
-/>
-
-<Directory Id='TARGETDIR' Name='SourceDir'>
-    <Directory Id='$(var.PFILESDIR)'>
-        <Directory Id='ITLProgramFilesDir' Name='Invisible Things Lab'>
-            <Directory Id='QubesProgramFilesDir' Name='Qubes Tools'>
-                <Directory Id='BinDir' Name='bin'>
+                <DirectoryRef Id='BinDir' Name='bin'>
                     <Component Id='QubesDbDaemon' Guid='{1CE95F90-FBD1-4D1D-B955-C31D42F84D3C}'>
                         <File Id='QdbDaemon' Source='bin\$(env.DDK_ARCH)\qubesdb-daemon.exe' KeyPath='yes'/>
                         <ServiceInstall
@@ -72,17 +34,13 @@ Value='[=ProductFolder]'
                         Wait='yes'
                         />
                     </Component>
-                </Directory>
-            </Directory>
-        </Directory>
-    </Directory>
-    <Directory Id='$(var.SYSDIR)'>
+                </DirectoryRef>
+    <DirectoryRef Id='$(var.SYSDIR)'>
         <Component Id='QubesDbClient' Guid='{E9742F11-6E77-44FC-8A53-168BE2D9273A}'>
             <File Id='QdbClient' Source='bin\$(env.DDK_ARCH)\qubesdb-client.dll' KeyPath='yes'/>
             <File Id='QdbCmd' Source='bin\$(env.DDK_ARCH)\qubesdb-cmd.exe'/>
         </Component>
-    </Directory>
-</Directory>
+    </DirectoryRef>
 
-</Module>
+</Fragment>
 </Wix>
