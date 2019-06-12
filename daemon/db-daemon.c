@@ -220,6 +220,9 @@ int mainloop(struct db_daemon_data *d) {
                     }
                     d->multiread_requested = 1;
                 } else {
+                    /* do not send further updates, until VM's daemon restart
+                     * and re-sync */
+                    d->remote_connected = 0;
                     break;
                 }
                 break;
