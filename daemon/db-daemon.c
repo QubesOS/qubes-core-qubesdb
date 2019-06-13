@@ -168,7 +168,7 @@ int mainloop(struct db_daemon_data *d) {
     // Create the thread that will handle client pipes
     pipe_thread = CreateThread(NULL, 0, pipe_thread_main, d->pipe_server, 0, NULL);
     if (!pipe_thread) {
-        perror("CreateThread(main pipe thread)");
+        win_perror("CreateThread(main pipe thread)");
         return 0;
     }
 
@@ -189,7 +189,7 @@ int mainloop(struct db_daemon_data *d) {
         case 0: {
             // pipe thread terminated, abort
             GetExitCodeThread(pipe_thread, &status);
-            perror2(status, "pipe thread");
+            win_perror2(status, "pipe thread");
             return 0;
         }
 
@@ -238,7 +238,7 @@ int mainloop(struct db_daemon_data *d) {
 
         default: {
             // wait failed
-            perror("WaitForMultipleObjects");
+            win_perror("WaitForMultipleObjects");
             return 0;
         }
         }
@@ -258,7 +258,7 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
         // blocking read
         status = QpsRead(p->daemon->pipe_server, p->id, &hdr, sizeof(hdr));
         if (ERROR_SUCCESS != status) {
-            perror("QpsRead");
+            win_perror("QpsRead");
             LogWarning("read from client %lu failed", p->id);
             QpsDisconnectClient(p->daemon->pipe_server, p->id);
             free(param);
@@ -289,7 +289,7 @@ void client_connected_callback(PIPE_SERVER server, LONGLONG id, PVOID context) {
     param->daemon = context;
     client_thread = CreateThread(NULL, 0, pipe_thread_client, param, 0, NULL);
     if (!client_thread) {
-        perror("CreateThread");
+        win_perror("CreateThread");
         free(param);
         return;
     }
@@ -315,7 +315,7 @@ int init_server_socket(struct db_daemon_data *d) {
         SDDL_REVISION_1,
         &sd,
         NULL)) {
-        perror("ConvertStringSecurityDescriptorToSecurityDescriptor");
+        win_perror("ConvertStringSecurityDescriptorToSecurityDescriptor");
         return 0;
     }
 

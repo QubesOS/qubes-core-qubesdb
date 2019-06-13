@@ -74,7 +74,7 @@ static int connect_to_daemon(struct qdb_handle *qh) {
         WCHAR user_name[user_name_len];
 
         if (!GetUserName(user_name, &user_name_len)) {
-            perror("GetUserName");
+            win_perror("GetUserName");
             return 0;
         }
         StringCbPrintf(pipe_name, sizeof(pipe_name), QDB_DAEMON_LOCAL_PATH, user_name);
@@ -90,7 +90,7 @@ static int connect_to_daemon(struct qdb_handle *qh) {
     status = QpsConnect(pipe_name, &qh->read_pipe, &qh->write_pipe);
     if (status != ERROR_SUCCESS)
     {
-        perror2(status, "connect to server");
+        win_perror2(status, "connect to server");
         return 0;
     }
 
@@ -162,7 +162,7 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr, void *dat
             else {
                 /* try again */
                 if (!QioWriteBuffer(h->write_pipe, hdr, sizeof(*hdr))) {
-                    perror("write to daemon");
+                    win_perror("write to daemon");
                     return 0;
                 }
                 else
@@ -170,14 +170,14 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr, void *dat
             }
         } else {
             /* other write error */
-            perror("write to daemon");
+            win_perror("write to daemon");
             return 0;
         }
     }
     if (data && !QioWriteBuffer(h->write_pipe, data, hdr->data_len)) {
         /* no recovery after header send, daemon most likely closed connection
          * in reaction to our data */
-        perror("write to daemon");
+        win_perror("write to daemon");
         return 0;
     }
     return 1;
