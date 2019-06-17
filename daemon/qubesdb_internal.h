@@ -73,6 +73,7 @@ struct db_daemon_data {
     int remote_connected;       /* if remote daemon connected and ready for
                                  * processing requests (i.e. have
                                  * synchronised database */
+    struct buffer *vchan_buffer;/* vchan write buffer */
 #ifdef WIN32
     PIPE_SERVER pipe_server;
     SECURITY_ATTRIBUTES sa;
@@ -113,6 +114,8 @@ int handle_client_data(struct db_daemon_data *d, struct client *client,
                 char *data, int data_len);
 int handle_client_connect(struct db_daemon_data *d, struct client *client);
 int handle_client_disconnect(struct db_daemon_data *d, struct client *client);
+int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
+        char *data, int data_len);
 #ifndef WIN32
 int write_client_buffered(struct client *client, char *buf, size_t len);
 #else

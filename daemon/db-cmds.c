@@ -110,53 +110,96 @@ int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
     return 1;
 }
 
+/** Simulate non-blocking vchan write by checking available space
+ * @param vchan vchan connection
+ * @param buf Data to send
+ * @param len Amount of data
+ * @return written amount of data, or -1 on error (error code in errno)
+ *
+ * FIXME: this is suspectible to race condition if remote side is malicious,
+ * proper solution require exposing blocking flag on libvchan API.
+ */
+int vchan_write_nonblock(libvchan_t *vchan, char *buf, size_t size) {
+    size_t avail = libvchan_buffer_space(vchan);
+    ssize_t ret;
+    if (avail < size)
+        size = avail;
+    ret = libvchan_write(vchan, buf, size);
+    if (ret == 0) {
+        ret = -1;
+        errno = EWOULDBLOCK;
+    }
+    return ret;
+}
+
 /* write to either client given by fd parameter or vchan if
  * fd == NULL
+ * writes could be buffered for vchan, or if client FD is set to non-blocking
+ * mode
  */
 int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
-#ifndef WIN32
     int ret, count;
-#endif
+    struct buffer *write_queue;
+    int buf_datacount;
 
     if (c == NULL) {
         /* vchan */
         if (!d->vchan)
             /* if vchan not connected, just do nothing */
             return 1;
-        if (libvchan_send(d->vchan, data, data_len) < 0) {
-            perror("vchan write");
-            exit(1);
-        }
-        return 1;
+        write_queue = d->vchan_buffer;
     } else {
-#ifndef WIN32
-        int buf_datacount;
-        while ((buf_datacount = buffer_datacount(c->write_queue))) {
-            ret = write(c->fd, buffer_data(c->write_queue), buf_datacount);
-            if (ret < 0) {
-                perror("client write");
-                return 0;
-            }
-            buffer_substract(c->write_queue, ret);
-        }
+        write_queue = c->write_queue;
+    }
 
-        count = 0;
-        while (count < data_len) {
-            ret = write(c->fd, data+count, data_len-count);
-            if (ret < 0) {
-                perror("client write");
-                return 0;
-            }
-            count += ret;
-        }
-#else // !WIN32
+#ifdef WIN32
+    if (c) {
         DWORD status = QpsWrite(d->pipe_server, c->id, data, data_len);
         if (status != ERROR_SUCCESS)
             return 0;
-#endif
         return 1;
     }
+#endif
+
+    /* now it's either vchan, or local client on Linux */
+    while ((buf_datacount = buffer_datacount(write_queue))) {
+        if (c)
+            ret = write(c->fd, buffer_data(write_queue), buf_datacount);
+        else
+            ret = vchan_write_nonblock(d->vchan, buffer_data(write_queue), buf_datacount);
+        if (ret < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* receiver doesn't have space for more data,
+                 * buffer actual requested data and exit */
+                buffer_append(write_queue, data, data_len);
+                return 1;
+            }
+            perror("vchan/client write");
+            return 0;
+        }
+        buffer_substract(write_queue, ret);
+    }
+
+    count = 0;
+    while (count < data_len) {
+        if (c)
+            ret = write(c->fd, data+count, data_len-count);
+        else
+            ret = vchan_write_nonblock(d->vchan, data+count, data_len-count);
+        if (ret < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                /* receiver doesn't have space for more data,
+                 * buffer remaining requested data and exit */
+                buffer_append(write_queue, data+count, data_len-count);
+                return 1;
+            }
+            perror("vchan/client write");
+            return 0;
+        }
+        count += ret;
+    }
+    return 1;
 }
 
 int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
@@ -645,7 +688,7 @@ int handle_vchan_data(struct db_daemon_data *d) {
         case QDB_CMD_RM:
             /* if there is no space for response, drop the command - remote
              * side seems unresponsive */
-            if (libvchan_data_space(d->vchan) < sizeof(hdr)) {
+            if (libvchan_buffer_space(d->vchan) < sizeof(hdr)) {
                 fprintf(stderr, "got QDB_CMD_RM from remote domain, "
                                 "but there is no space in vchan for the reponse; dropping\n");
                 return 0;

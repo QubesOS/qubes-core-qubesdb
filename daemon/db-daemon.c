@@ -448,6 +448,9 @@ int mainloop(struct db_daemon_data *d) {
                     break;
                 }
             }
+            /* trigger pending data write */
+            if (libvchan_buffer_space(d->vchan))
+                write_vchan_or_client(d, NULL, NULL, 0);
             while (libvchan_data_ready(d->vchan)) {
                 if (!handle_vchan_data(d)) {
                     fprintf(stderr, "FATAL: vchan data processing failed\n");
@@ -536,8 +539,14 @@ int init_server_socket(struct db_daemon_data *d) {
 
 int init_vchan(struct db_daemon_data *d) {
     if (d->vchan) {
+        buffer_free(d->vchan_buffer);
         libvchan_close(d->vchan);
         d->vchan = NULL;
+    }
+    d->vchan_buffer = buffer_create();
+    if (!d->vchan_buffer) {
+        fprintf(stderr, "vchan buffer allocation failed\n");
+        return 0;
     }
     if (d->remote_name) {
         /* dom0 part: listen for connection */
