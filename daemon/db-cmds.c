@@ -630,6 +630,12 @@ int handle_vchan_data(struct db_daemon_data *d) {
                 return 0;
             break;
         case QDB_CMD_MULTIREAD:
+            if (d->remote_connected) {
+                fprintf(stderr, "received spurious QDB_CMD_MULTIREAD on vchan: "
+                                "only one after connection allowed\n");
+                discard_data_and_send_error(d, NULL, &hdr);
+                return 0;
+            }
             if (!handle_multiread(d, NULL, &hdr))
                 return 0;
             /* remote have synchronized database, send furher updates */
@@ -637,6 +643,13 @@ int handle_vchan_data(struct db_daemon_data *d) {
             break;
 
         case QDB_CMD_RM:
+            /* if there is no space for response, drop the command - remote
+             * side seems unresponsive */
+            if (libvchan_data_space(d->vchan) < sizeof(hdr)) {
+                fprintf(stderr, "got QDB_CMD_RM from remote domain, "
+                                "but there is no space in vchan for the reponse; dropping\n");
+                return 0;
+            }
             if (!handle_rm(d, NULL, &hdr))
                 return 0;
             break;
