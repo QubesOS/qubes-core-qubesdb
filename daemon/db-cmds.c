@@ -81,13 +81,17 @@ int verify_data(char *data, int len) {
  */
 int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
     switch (untrusted_hdr->type) {
-        case QDB_CMD_WRITE:
         case QDB_CMD_READ:
-        case QDB_CMD_RM:
-        case QDB_CMD_MULTIREAD:
         case QDB_CMD_LIST:
         case QDB_CMD_WATCH:
         case QDB_CMD_UNWATCH:
+            /* those messages allowed only on local daemon interface */
+            if (vchan)
+                return 0;
+            /* fallthrough */
+        case QDB_CMD_MULTIREAD:
+        case QDB_CMD_WRITE:
+        case QDB_CMD_RM:
             break;
         case QDB_RESP_OK:
         case QDB_RESP_ERROR:
