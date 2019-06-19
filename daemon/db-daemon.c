@@ -548,6 +548,8 @@ int init_vchan(struct db_daemon_data *d) {
         fprintf(stderr, "vchan buffer allocation failed\n");
         return 0;
     }
+    d->vchan_pending_hdr.type = QDB_INVALID_CMD;
+
     if (d->remote_name) {
         /* dom0 part: listen for connection */
         if (d->remote_domid == 0) {

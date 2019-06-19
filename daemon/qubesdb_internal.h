@@ -74,6 +74,7 @@ struct db_daemon_data {
                                  * processing requests (i.e. have
                                  * synchronised database */
     struct buffer *vchan_buffer;/* vchan write buffer */
+    struct qdb_hdr vchan_pending_hdr; /* retrieved header but data not yet handled */
 #ifdef WIN32
     PIPE_SERVER pipe_server;
     SECURITY_ATTRIBUTES sa;

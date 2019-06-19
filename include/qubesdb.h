@@ -93,6 +93,8 @@ enum qdb_msg {
 #define QDB_MAX_DATA 3072
 #define QDB_MAX_PATH 64
 
+#define QDB_INVALID_CMD 0xff
+
 /** Socket path for dom0 part of daemon for given VM */
 #ifdef WIN32
 #define QDB_DAEMON_PATH_PATTERN L"\\\\.\\pipe\\qubesdb.%S.sock"

@@ -651,21 +651,41 @@ int handle_vchan_multiread_resp(struct db_daemon_data *d, struct qdb_hdr *hdr) {
  * function. Any error in processing vchan data should be considered fatal.
  * @param d Daemon global data
  * @return 1 on success (message handled and responded), 0 if error
- *           occured and client should be disconnected.
+ *           occured and client should be disconnected, 2 if message not yet
+ *           handled (waiting for more data)
  */
 int handle_vchan_data(struct db_daemon_data *d) {
     struct qdb_hdr untrusted_hdr;
     struct qdb_hdr hdr;
 
-    if (libvchan_recv(d->vchan, &untrusted_hdr, sizeof(untrusted_hdr)) < 0) {
-        perror("vchan read");
-        return 0;
+    if (d->vchan_pending_hdr.type == QDB_INVALID_CMD) {
+        /* no previous header, retrieve it */
+        if (libvchan_data_ready(d->vchan) < sizeof(untrusted_hdr)) {
+            /* not enough data in vchan, wait for more */
+            return 2;
+        }
+        if (libvchan_recv(d->vchan, &untrusted_hdr, sizeof(untrusted_hdr)) < 0) {
+            perror("vchan read");
+            return 0;
+        }
+        if (!verify_hdr(&untrusted_hdr, 1)) {
+            fprintf(stderr, "invalid message received from peer\n");
+            return 0;
+        }
+        hdr = untrusted_hdr;
+    } else {
+        hdr = d->vchan_pending_hdr;
+        d->vchan_pending_hdr.type = QDB_INVALID_CMD;
     }
-    if (!verify_hdr(&untrusted_hdr, 1)) {
-        fprintf(stderr, "invalid message received from peer\n");
-        return 0;
+
+    /* This check is correct only because the whole message (up to
+     * QDB_MAX_DATA) can fit into a vchan buffer. Otherwise it could cause a
+     * deadlock. */
+    if (libvchan_data_ready(d->vchan) < hdr.data_len) {
+        /* save the header, but process the message when the rest is available */
+        d->vchan_pending_hdr = hdr;
+        return 2;
     }
-    hdr = untrusted_hdr;
 
     switch (hdr.type) {
         case QDB_CMD_WRITE:
