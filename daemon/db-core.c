@@ -30,6 +30,7 @@ struct qubesdb *qubesdb_init(send_watch_notify_t send_notify_func) {
     db->entries->path[0] = '/';
     db->entries->path[1] = '\0';
     db->entries->value = strdup("");
+    db->entries->value_len = 0;
 
     db->watches = NULL;
 
@@ -111,8 +112,12 @@ int qubesdb_write(struct qubesdb *db, char *path, char *data, int data_len) {
     }
     if (db_entry->value)
         free(db_entry->value);
-    db_entry->value = malloc(data_len);
-    memcpy(db_entry->value, data, data_len);
+    if (data_len) {
+        db_entry->value = malloc(data_len);
+        memcpy(db_entry->value, data, data_len);
+    } else {
+        db_entry->value = strdup("");
+    }
     db_entry->value_len = data_len;
     return 1;
 }
