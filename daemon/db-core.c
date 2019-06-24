@@ -136,7 +136,7 @@ int qubesdb_remove(struct qubesdb *db, char *path) {
     entry = qubesdb_search(db, path, !remove_dir);
     if (!entry)
         return 0;
-    while (strncmp(entry->path, path, cmp_len) == 0) {
+    while (entry->next != entry && strncmp(entry->path, path, cmp_len) == 0) {
         tmp_entry = entry;
         entry = entry->next;
 
