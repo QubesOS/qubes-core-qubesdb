@@ -90,6 +90,7 @@ struct db_daemon_data {
 };
 
 struct qubesdb *qubesdb_init(send_watch_notify_t);
+void qubesdb_destroy(struct qubesdb *db);
 
 struct qubesdb_entry *qubesdb_search(struct qubesdb *db, char *path, int exact);
 

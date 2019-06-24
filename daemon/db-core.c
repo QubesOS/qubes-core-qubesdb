@@ -38,6 +38,28 @@ struct qubesdb *qubesdb_init(send_watch_notify_t send_notify_func) {
     return db;
 }
 
+void qubesdb_destroy(struct qubesdb *db) {
+    struct qubesdb_entry *entry;
+    struct qubesdb_entry *tmp_entry;
+
+    entry = db->entries->next;
+
+    while (entry != db->entries) {
+        tmp_entry = entry;
+        entry = entry->next;
+
+        tmp_entry->prev->next = tmp_entry->next;
+        tmp_entry->next->prev = tmp_entry->prev;
+        free(tmp_entry->value);
+        free(tmp_entry);
+    }
+
+    free(db->entries->value);
+    free(db->entries);
+    // TODO: free watches
+    free(db);
+}
+
 struct qubesdb_entry *qubesdb_search(struct qubesdb *db, char *path, int exact) {
     struct qubesdb_entry *entry;
     int diff;
