@@ -30,12 +30,35 @@ struct qubesdb *qubesdb_init(send_watch_notify_t send_notify_func) {
     db->entries->path[0] = '/';
     db->entries->path[1] = '\0';
     db->entries->value = strdup("");
+    db->entries->value_len = 0;
 
     db->watches = NULL;
 
     db->send_watch_notify = send_notify_func;
 
     return db;
+}
+
+void qubesdb_destroy(struct qubesdb *db) {
+    struct qubesdb_entry *entry;
+    struct qubesdb_entry *tmp_entry;
+
+    entry = db->entries->next;
+
+    while (entry != db->entries) {
+        tmp_entry = entry;
+        entry = entry->next;
+
+        tmp_entry->prev->next = tmp_entry->next;
+        tmp_entry->next->prev = tmp_entry->prev;
+        free(tmp_entry->value);
+        free(tmp_entry);
+    }
+
+    free(db->entries->value);
+    free(db->entries);
+    // TODO: free watches
+    free(db);
 }
 
 struct qubesdb_entry *qubesdb_search(struct qubesdb *db, char *path, int exact) {
@@ -111,8 +134,12 @@ int qubesdb_write(struct qubesdb *db, char *path, char *data, int data_len) {
     }
     if (db_entry->value)
         free(db_entry->value);
-    db_entry->value = malloc(data_len);
-    memcpy(db_entry->value, data, data_len);
+    if (data_len) {
+        db_entry->value = malloc(data_len);
+        memcpy(db_entry->value, data, data_len);
+    } else {
+        db_entry->value = strdup("");
+    }
     db_entry->value_len = data_len;
     return 1;
 }
@@ -136,7 +163,7 @@ int qubesdb_remove(struct qubesdb *db, char *path) {
     entry = qubesdb_search(db, path, !remove_dir);
     if (!entry)
         return 0;
-    while (strncmp(entry->path, path, cmp_len) == 0) {
+    while (entry->next != entry && strncmp(entry->path, path, cmp_len) == 0) {
         tmp_entry = entry;
         entry = entry->next;
 

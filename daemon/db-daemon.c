@@ -660,7 +660,11 @@ static void vchan_logger(IN int logLevel, IN const CHAR *function, IN const WCHA
 
 #endif
 
+#ifndef FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
 int main(int argc, char **argv) {
+#else
+int fuzz_main(int argc, char **argv) {
+#endif
     struct db_daemon_data d;
 #ifndef WIN32
     int ready_pipe[2] = {0, 0};

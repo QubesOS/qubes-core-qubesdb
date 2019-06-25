@@ -175,8 +175,10 @@ int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
             /* if vchan not connected, return error */
             return 0;
         if (libvchan_recv(d->vchan, data, data_len) < 0) {
-            perror("vchan read");
-            exit(1);
+            perror("closing vchan. vchan read");
+            libvchan_close(d->vchan);
+            d->vchan = NULL;
+            return 0;
         }
         return 1;
     } else {
