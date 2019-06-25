@@ -7,7 +7,7 @@ CFLAGS += -DFUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION=1
 all: db-daemon_fuzzer_seed_corpus.zip db-daemon_fuzzer
 
 db-daemon_fuzzer: buffer.o db-cmds.o db-core.o db-daemon.o db-daemon_fuzzer.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LIB_FUZZING_ENGINE)
+	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIB_FUZZING_ENGINE)
 
 db-daemon_fuzzer_seed_corpus.zip: seed-corpus/*
 	zip -q -r $@ seed-corpus	
