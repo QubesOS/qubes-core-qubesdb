@@ -169,7 +169,7 @@ static PyObject *qdbpy_list(QdbHandle *self, PyObject *args)
     Py_END_ALLOW_THREADS
 
     if (list) {
-        int i;
+        unsigned int i;
         PyObject *val = PyList_New(list_len);
         for (i = 0; i < list_len; i++) {
 #if PY_VERSION_HEX >= 0x03000000
@@ -212,7 +212,7 @@ static PyObject *qdbpy_multiread(QdbHandle *self, PyObject *args)
     Py_END_ALLOW_THREADS
 
     if (values) {
-        int i;
+        unsigned int i;
         PyObject *val = PyDict_New();
         for (i = 0; i < list_len; i++) {
             PyDict_SetItemString(val,
@@ -400,7 +400,7 @@ static int parse_handle_path(QdbHandle *self, PyObject *args,
                                   qdb_handle_t *qdb,
                                   char **path)
 {
-    int path_len;
+    unsigned int path_len;
     *qdb = qdbhandle(self);
 
     if (!qdb)
