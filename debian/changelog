@@ -1,3 +1,28 @@
+qubesdb (4.1.1-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * spec.in: use %{python3_pkgversion}
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: switch to xenial, add fc30
+
+  [ Marta Marczykowska-Górecka ]
+  * Implement qubesdb_destroy
+  * Integration for OSS Fuzzer for db-daemon
+  * Daemon: fixed crash when trying to remove '/'
+  * daemon: fix handling empty entries
+  * Fixes for C++
+
+  [ Marek Marczykowski-Górecki ]
+  * daemon: fix dom0 daemon hang if VM's daemon disconnects
+  * daemon: limit amount of vchan writes triggered by remote side
+  * daemon: buffer vchan writes
+  * daemon: improve handling stalling VM's daemon
+  * daemon: improve validation of message type over vchan
+  * python: fix gcc -Wsign-compare warnings
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 11 Aug 2019 06:49:34 +0200
+
 qubesdb (4.1.0-1) unstable; urgency=medium
 
   * rpm: drop direct xen-libs dependency
