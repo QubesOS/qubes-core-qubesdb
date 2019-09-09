@@ -1,3 +1,18 @@
+qubesdb (4.0.11-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * spec.in: use %{python3_pkgversion}
+
+  [ Marta Marczykowska-Górecka ]
+  * Daemon: fixed crash when trying to remove '/'
+  * daemon: fix handling empty entries
+
+  [ Marek Marczykowski-Górecki ]
+  * python: fix gcc -Wsign-compare warnings
+  * travis: update Fedora versions, switch to xenial
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 09 Sep 2019 09:31:23 +0200
+
 qubesdb (4.0.10-1) unstable; urgency=medium
 
   * rpm: add missing BR: systemd-devel
