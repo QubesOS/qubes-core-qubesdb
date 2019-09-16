@@ -36,7 +36,7 @@ URL:		http://www.qubes-os.org/
 BuildRequires:	gcc
 BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
 BuildRequires:	systemd-devel
-BuildRequires:	python-devel
+BuildRequires:	python2-devel
 BuildRequires:  python%{python3_pkgversion}-devel
 Requires:	qubes-libvchan-@BACKEND_VMM@
 # XXX: VMM specific
