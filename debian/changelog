@@ -1,3 +1,11 @@
+qubesdb (4.1.2-1) unstable; urgency=medium
+
+  * rpm: fix build dependencies
+  * daemon: make systemd linking optional
+  * Fix permissions of header files
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 17 Sep 2019 04:29:27 +0200
+
 qubesdb (4.1.1-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
