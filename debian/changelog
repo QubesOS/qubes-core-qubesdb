@@ -1,3 +1,13 @@
+qubesdb (4.1.3-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * travis: add fc31 and bullseye
+
+  [ Frédéric Pierret (fepitre) ]
+  * travis: switch to bionic
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 05 Jan 2020 13:03:11 +0100
+
 qubesdb (4.1.2-1) unstable; urgency=medium
 
   * rpm: fix build dependencies
