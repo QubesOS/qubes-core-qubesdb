@@ -14,6 +14,7 @@ int opt_fullpath = 0;
 int opt_raw = 0;
 int opt_quiet = 0;
 int opt_watch_count = 1;
+int opt_wait = 0;
 
 enum {
     DO_READ = 1,
@@ -43,8 +44,6 @@ void encode_and_print_value(char *val) {
             /* windows doesn't support 'h' modifier */
             printf("\\x%02x", val[i]);
 #endif
-
-
     }
 }
 
@@ -55,14 +54,22 @@ int cmd_read(qdb_handle_t h, int argc, char **args) {
 
     for (i=0; i < argc; i++) {
         value = qdb_read(h, args[i], NULL);
+        if (opt_wait) {
+            qdb_watch(h, args[i]);
+            while (!(value = qdb_read(h, args[i], NULL)))
+            {
+                qdb_read_watch(h);
+            }
+        }
         if (value) {
             if (opt_fullpath)
                 printf("%s = ", args[i]);
             encode_and_print_value(value);
             printf("\n");
         } else {
-            if (!opt_quiet)
+            if (!opt_quiet) {
                 fprintf(stderr, "Failed to read %s\n", args[i]);
+            }
             anything_failed = 1;
         }
     }
@@ -209,7 +216,7 @@ int parse_cmd(char *cmd_str) {
 }
 
 void usage(char *argv0) {
-    fprintf(stderr, 
+    fprintf(stderr,
             "Usage: %s [-frq] [-c <command>] [-d <destination domain>] \n"
             "       [command arguments]\n", argv0);
     fprintf(stderr, "  -f - print full path (affects reading commands)\n");
@@ -217,6 +224,7 @@ void usage(char *argv0) {
     fprintf(stderr, "  -q - quiet - do not print error\n");
     fprintf(stderr, "  -c <command> - specify command\n");
     fprintf(stderr, "  -d <domain> - specify destination domain, available only in dom0\n");
+    fprintf(stderr, "  -w - wait for any value (possibly empty)\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Available commands:\n");
     fprintf(stderr, "  read path [path...] - read value(s)\n");
@@ -244,9 +252,9 @@ int main(int argc, char **argv) {
     }
 
 #ifndef WIN32
-    while ((opt = getopt(argc, argv, "hc:d:n:frq")) != -1)
+    while ((opt = getopt(argc, argv, "hc:d:n:frqw")) != -1)
 #else
-    while ((opt = getopt(argc, argv, "hc:d:n:frq")) != 0)
+    while ((opt = getopt(argc, argv, "hc:d:n:frqw")) != 0)
 #endif
     {
         switch (opt) {
@@ -265,6 +273,9 @@ int main(int argc, char **argv) {
                 break;
             case 'q':
                 opt_quiet = 1;
+                break;
+            case 'w':
+                opt_wait = 1;
                 break;
             case 'n':
                 opt_watch_count = atoi(optarg);
