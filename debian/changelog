@@ -1,3 +1,11 @@
+qubesdb (4.1.4-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * travis: switch to dom0 Fedora 31
+  * qubesdb-read: handle wait option
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 24 Jan 2020 03:18:16 +0100
+
 qubesdb (4.1.3-1) unstable; urgency=medium
 
   [ Marek Marczykowski-Górecki ]
