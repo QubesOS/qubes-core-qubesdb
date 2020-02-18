@@ -19,6 +19,7 @@
  *
  */
 
+#define PY_SSIZE_T_CLEAN 
 #include <Python.h>
 
 #include <stdbool.h>
@@ -128,7 +129,7 @@ static PyObject *qdbpy_write(QdbHandle *self, PyObject *args)
     qdb_handle_t qdb = qdbhandle(self);
     char *path;
     char *data;
-    int data_len;
+    Py_ssize_t data_len;
     bool result;
 
     if (!qdb)
@@ -400,7 +401,7 @@ static int parse_handle_path(QdbHandle *self, PyObject *args,
                                   qdb_handle_t *qdb,
                                   char **path)
 {
-    unsigned int path_len;
+    size_t path_len;
     *qdb = qdbhandle(self);
 
     if (!qdb)
