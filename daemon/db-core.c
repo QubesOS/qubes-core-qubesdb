@@ -51,10 +51,12 @@ void qubesdb_destroy(struct qubesdb *db) {
 
         tmp_entry->prev->next = tmp_entry->next;
         tmp_entry->next->prev = tmp_entry->prev;
+        memset(tmp_entry->value, 0, tmp_entry->value_len);
         free(tmp_entry->value);
         free(tmp_entry);
     }
 
+    memset(db->entries->value, 0, db->entries->value_len);
     free(db->entries->value);
     free(db->entries);
     // TODO: free watches
@@ -132,8 +134,10 @@ int qubesdb_write(struct qubesdb *db, char *path, char *data, int data_len) {
     if (!db_entry) {
         return 0;
     }
-    if (db_entry->value)
+    if (db_entry->value) {
+        memset(db_entry->value, 0, db_entry->value_len);
         free(db_entry->value);
+    }
     if (data_len) {
         db_entry->value = malloc(data_len);
         memcpy(db_entry->value, data, data_len);
@@ -169,6 +173,7 @@ int qubesdb_remove(struct qubesdb *db, char *path) {
 
         tmp_entry->prev->next = tmp_entry->next;
         tmp_entry->next->prev = tmp_entry->prev;
+        memset(tmp_entry->value, 0, tmp_entry->value_len);
         free(tmp_entry->value);
         free(tmp_entry);
         anything_removed = 1;
