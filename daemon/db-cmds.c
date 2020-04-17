@@ -37,7 +37,7 @@ int verify_path(char *path) {
             break;
         if (path[i] >= 'a' && path[i] <= 'z')
             continue;
-        if (path[i] >= 'Z' && path[i] <= 'Z')
+        if (path[i] >= 'A' && path[i] <= 'Z')
             continue;
         if (path[i] >= '0' && path[i] <= '9')
             continue;
