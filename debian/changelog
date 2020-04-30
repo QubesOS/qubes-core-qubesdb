@@ -1,3 +1,10 @@
+qubesdb (4.1.6-1) wheezy; urgency=medium
+
+  [ Ivan Kardykov ]
+  * Fix uppercase write bug
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 30 Apr 2020 23:07:58 +0200
+
 qubesdb (4.1.5-1) unstable; urgency=medium
 
   * daemon: zero out value before freeing
