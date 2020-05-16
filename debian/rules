@@ -9,7 +9,7 @@ include /usr/share/dpkg/default.mk
 export DESTDIR=$(PWD)/debian/tmp
 
 %:
-	dh $@ --with python2,python3,systemd
+	dh $@ --with python3,systemd
 
 override_dh_auto_build:
 	dh_clean --keep
@@ -19,7 +19,7 @@ override_dh_auto_build:
 	done
 
 override_dh_auto_install:
-	make install PYTHON=python2 DESTDIR=$(DESTDIR) PYTHON_PREFIX_ARG=--install-layout=deb LIBDIR=/usr/lib BINDIR=/usr/bin SBINDIR=/usr/sbin
+	make install DESTDIR=$(DESTDIR) PYTHON_PREFIX_ARG=--install-layout=deb LIBDIR=/usr/lib BINDIR=/usr/bin SBINDIR=/usr/sbin
 	for pyver in `py3versions -vr`; do \
 		make -C python install PYTHON=python$$pyver DESTDIR=$(DESTDIR) \
 			PYTHON_PREFIX_ARG=--install-layout=deb; \

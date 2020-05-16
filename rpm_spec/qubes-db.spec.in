@@ -36,7 +36,6 @@ URL:		http://www.qubes-os.org/
 BuildRequires:	gcc
 BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
 BuildRequires:	systemd-devel
-BuildRequires:	python2-devel
 BuildRequires:  python%{python3_pkgversion}-devel
 Requires:	qubes-libvchan-@BACKEND_VMM@
 # XXX: VMM specific
@@ -61,14 +60,6 @@ Requires:	qubes-db-libs
 %description devel
 Header files for QubesDB client library and daemon protocol.
 
-%package -n python2-qubesdb
-Summary:    Python2 bindings for QubesDB
-Requires:   qubes-db-libs
-%{?python_provide:%python_provide python2-qubesdb}
-
-%description -n python2-qubesdb
-Python bindings for QubesDB
-
 %package -n python%{python3_pkgversion}-qubesdb
 Summary:    Python%{python3_pkgversion} bindings for QubesDB
 Requires:   qubes-db-libs
@@ -82,17 +73,10 @@ Python3 bindings for QubesDB
 
 %build
 %{?set_build_flags}
-make %{?_smp_mflags} PYTHON=%{__python2} BACKEND_VMM=@BACKEND_VMM@ all
-make %{?_smp_mflags} PYTHON=%{__python3} -C python all
+make %{?_smp_mflags} PYTHON=%{__python3} BACKEND_VMM=@BACKEND_VMM@ all
 
 %install
 make install \
-         PYTHON=%{__python2} \
-         DESTDIR=%{buildroot} \
-         LIBDIR=%{_libdir} \
-         BINDIR=%{_bindir} \
-         SBINDIR=%{_sbindir}
-make -C python install \
          PYTHON=%{__python3} \
          DESTDIR=%{buildroot} \
          LIBDIR=%{_libdir} \
@@ -113,10 +97,6 @@ make -C python install \
 
 %files libs
 %{_libdir}/libqubesdb.so
-
-%files -n python2-qubesdb
-%{python2_sitearch}/QubesDB-*egg-info
-%{python2_sitearch}/qubesdb.so
 
 %files -n python%{python3_pkgversion}-qubesdb
 %{python3_sitearch}/QubesDB-*egg-info
