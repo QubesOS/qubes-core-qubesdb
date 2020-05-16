@@ -29,6 +29,6 @@ install:
 	$(MAKE) -C include install
 
 msi:
-	$(MAKE) -C python install PYTHON_PREFIX_ARG=--prefix=. DESTDIR=python27
+	$(MAKE) -C python install PYTHON_PREFIX_ARG=--prefix=. DESTDIR=python3
 	candle -arch x64 -dversion=$(VERSION) installer.wxs
 	light -o core-qubesdb.msm installer.wixobj
