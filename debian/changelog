@@ -1,3 +1,13 @@
+qubesdb (4.1.7-1) unstable; urgency=medium
+
+  [ Neowutran ]
+  * fix QubesOS/qubes-issues#5658, keep python2 in qubesdb.c
+
+  [ Marek Marczykowski-Górecki ]
+  * Drop python2 support
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 17 May 2020 13:03:29 +0200
+
 qubesdb (4.1.6-1) wheezy; urgency=medium
 
   [ Ivan Kardykov ]
