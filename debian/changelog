@@ -1,3 +1,16 @@
+qubesdb (4.0.13-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * travis: switch to bionic
+
+  [ Ivan Kardykov ]
+  * Fix uppercase write bug
+
+  [ Neowutran ]
+  * fix QubesOS/qubes-issues#5658, keep python2 in qubesdb.c
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 20 May 2020 13:21:33 +0200
+
 qubesdb (4.0.12-1) unstable; urgency=medium
 
   * rpm: fix build dependencies
