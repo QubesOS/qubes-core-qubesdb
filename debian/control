@@ -10,7 +10,7 @@ Build-Depends:
  python3-all-dev,
  python-setuptools,
  quilt,
- libvchan-xen-dev,
+ libvchan-xen-dev|libvchan-kvm-dev,
  pkg-config
 Standards-Version: 4.4.0.1
 Homepage: http://www.qubes-os.org
@@ -18,7 +18,7 @@ Homepage: http://www.qubes-os.org
 Package: qubesdb
 Section: admin
 Architecture: amd64
-Depends: libqubesdb, libvchan-xen, ${shlibs:Depends}, ${misc:Depends}
+Depends: libqubesdb, libvchan-xen|libvchan-kvm, ${shlibs:Depends}, ${misc:Depends}
 Description: QubesDB management tools and daemon.
 
 Package: qubesdb-vm
