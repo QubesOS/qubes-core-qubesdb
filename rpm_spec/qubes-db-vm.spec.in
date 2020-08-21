@@ -52,6 +52,8 @@ QubesDB daemon service.
 %install
 install -d %{buildroot}%{_unitdir}
 install -p -m 644 daemon/qubes-db.service %{buildroot}%{_unitdir}/
+install -d %{buildroot}%{_unitdir}/qubes-db.service.d/
+install -p -m 644 daemon/qubes-db.service.d/*.conf %{buildroot}%{_unitdir}/qubes-db.service.d/
 
 %post
 %systemd_post qubes-db.service
@@ -65,6 +67,9 @@ install -p -m 644 daemon/qubes-db.service %{buildroot}%{_unitdir}/
 %files
 %doc
 %{_unitdir}/qubes-db.service
+
+%dir %{_unitdir}/qubes-db.service.d
+%{_unitdir}/qubes-db.service.d/30_qubes-kvm.conf
 
 %changelog
 @CHANGELOG@
