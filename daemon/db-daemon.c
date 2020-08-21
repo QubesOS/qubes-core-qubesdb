@@ -559,7 +559,8 @@ int init_vchan(struct db_daemon_data *d) {
 #else
         // We give a 5 minute timeout here because xeniface can take some time
         // to load the first time after reboot after pvdrivers installation.
-        d->vchan = VchanInitServer(d->remote_domid, QUBESDB_VCHAN_PORT, 4096, 5 * 60 * 1000);
+        ////d->vchan = VchanInitServer(d->remote_domid, QUBESDB_VCHAN_PORT, 4096, 5 * 60 * 1000);
+        d->vchan = libvchan_server_init(d->remote_domid, QUBESDB_VCHAN_PORT, 4096, 4096);
 #endif
         if (!d->vchan)
             return 0;
@@ -571,7 +572,8 @@ int init_vchan(struct db_daemon_data *d) {
 #else
         // We give a 5 minute timeout here because xeniface can take some time
         // to load the first time after reboot after pvdrivers installation.
-        d->vchan = VchanInitClient(d->remote_domid, QUBESDB_VCHAN_PORT, 5 * 60 * 1000);
+        ////d->vchan = VchanInitClient(d->remote_domid, QUBESDB_VCHAN_PORT, 5 * 60 * 1000);
+        d->vchan = libvchan_client_init(d->remote_domid, QUBESDB_VCHAN_PORT);
 #endif
         if (!d->vchan)
             return 0;
