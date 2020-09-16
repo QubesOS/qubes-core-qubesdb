@@ -1,3 +1,10 @@
+qubesdb (4.1.8-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Update travis
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 16 Sep 2020 16:27:16 +0200
+
 qubesdb (4.1.7-1) unstable; urgency=medium
 
   [ Neowutran ]
