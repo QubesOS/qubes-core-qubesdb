@@ -3,6 +3,7 @@ Description=Qubes DB agent
 After=systemd-tmpfiles-setup.service
 
 [Service]
+RuntimeDirectory=qubes
 # Both agent and daemon for dom0
 ExecStart=/usr/sbin/qubesdb-daemon 0 dom0
 Type=notify
