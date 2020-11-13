@@ -4,6 +4,8 @@ EXEEXT =
 
 SYSTEMD ?= 1
 
+BACKEND_VMM ?= xen
+
 ifneq ($(OS),Windows_NT)
 CFLAGS += -fPIC -O2
 CFLAGS += `pkg-config --cflags vchan-$(BACKEND_VMM)`

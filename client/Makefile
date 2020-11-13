@@ -1,3 +1,5 @@
+BACKEND_VMM ?= xen
+
 CFLAGS += -I../include -g -Wall -Wextra -Werror -pie
 CFLAGS += -fPIC
 CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
