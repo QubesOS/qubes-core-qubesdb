@@ -34,10 +34,10 @@ License:	GPL
 URL:		http://www.qubes-os.org/
 
 BuildRequires:	gcc
-BuildRequires:	qubes-libvchan-@BACKEND_VMM@-devel
+BuildRequires:	qubes-libvchan-devel
 BuildRequires:	systemd-devel
 BuildRequires:  python%{python3_pkgversion}-devel
-Requires:	qubes-libvchan-@BACKEND_VMM@
+Requires:	qubes-libvchan
 Source0:    %{name}-%{version}.tar.gz
 
 %description
@@ -71,7 +71,7 @@ Python3 bindings for QubesDB
 
 %build
 %{?set_build_flags}
-make %{?_smp_mflags} PYTHON=%{__python3} BACKEND_VMM=@BACKEND_VMM@ all
+make %{?_smp_mflags} PYTHON=%{__python3} all
 
 %install
 make install \

@@ -4,23 +4,23 @@ EXEEXT =
 
 SYSTEMD ?= 1
 
-BACKEND_VMM ?= xen
+BACKEND_VMM ?= $(shell pkg-config --cflags vchan | sed 's/.*vchan-//')
 
 ifneq ($(OS),Windows_NT)
 CFLAGS += -fPIC -O2
-CFLAGS += `pkg-config --cflags vchan-$(BACKEND_VMM)`
+CFLAGS += `pkg-config --cflags vchan`
 ifeq ($(SYSTEMD),1)
 CFLAGS += `pkg-config --cflags libsystemd || pkg-config --cflags libsystemd-daemon`
 CFLAGS += -DHAVE_SYSTEMD
 LIBS += `pkg-config --libs libsystemd || pkg-config --libs libsystemd-daemon`
 endif
-LIBS += `pkg-config --libs vchan-$(BACKEND_VMM)`
+LIBS += `pkg-config --libs vchan`
 
 else # Windows_NT
 EXEEXT = .exe
 CFLAGS += -I$(QUBES_INCLUDES)
 CFLAGS += -DUNICODE -D_UNICODE
-LIBS += -L$(QUBES_LIBS) -lvchan-$(BACKEND_VMM)
+LIBS += -L$(QUBES_LIBS) -lvchan
 endif
 CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
 

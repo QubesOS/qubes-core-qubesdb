@@ -1,4 +1,4 @@
-BACKEND_VMM ?= xen
+BACKEND_VMM ?= $(shell pkg-config --cflags vchan | sed 's/.*vchan-//')
 
 CFLAGS += -I../include -g -Wall -Wextra -Werror -pie
 CFLAGS += -fPIC
