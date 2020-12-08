@@ -1,3 +1,12 @@
+qubesdb (4.1.9-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Add .gitlab-ci.yml
+  * Set default BACKEND_VMM value to xen
+  * Use pkg-config to get BACKEND_VMM
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 08 Dec 2020 02:57:16 +0100
+
 qubesdb (4.1.8-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
