@@ -4,6 +4,7 @@ Priority: extra
 Maintainer: Jason Mehring <nrgaway@gmail.com>
 Build-Depends:
  debhelper,
+ dh-python,
  libsystemd-dev,
  python3-all,
  python3-all-dev,
@@ -11,7 +12,6 @@ Build-Depends:
  quilt,
  libvchan-xen-dev,
  pkg-config
-X-Python-Version: 3.7
 Standards-Version: 4.4.0.1
 Homepage: http://www.qubes-os.org
 
