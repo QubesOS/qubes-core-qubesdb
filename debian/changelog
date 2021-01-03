@@ -1,3 +1,12 @@
+qubesdb (4.1.10-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * debian: update control
+  * debian: update compat
+  * debian: update control for python deps
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 03 Jan 2021 22:42:06 +0100
+
 qubesdb (4.1.9-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
