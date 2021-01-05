@@ -7,7 +7,10 @@ arch=("x86_64")
 url="http://qubes-os.org/"
 license=('GPL')
 groups=()
-depends=(qubes-libvchan)
+depends=(qubes-libvchan
+  # Block updating if there is a major python update as the python API will be in the wrong PYTHONPATH
+  'python<3.10'
+  )
 makedepends=(qubes-libvchan python)
 checkdepends=()
 optdepends=()
