@@ -1,3 +1,13 @@
+qubesdb (4.0.16-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * debian: update control
+  * debian: update compat
+  * debian: update control for python deps
+  * Add .gitlab-ci.yml
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 06 Jan 2021 06:09:16 +0100
+
 qubesdb (4.0.15-1) unstable; urgency=medium
 
   * Drop python2 support
