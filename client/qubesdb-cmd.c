@@ -243,7 +243,7 @@ int main(int argc, char **argv) {
     char *dest_domain = NULL;
     int do_cmd = 0;
     int ret;
-    char opt;
+    int opt;
     qdb_handle_t h;
 
     if ((cmd_argv0=strchr(argv[0], '-'))) {
