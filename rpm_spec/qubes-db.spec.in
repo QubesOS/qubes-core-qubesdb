@@ -34,7 +34,8 @@ License:	GPL
 URL:		http://www.qubes-os.org/
 
 BuildRequires:	gcc
-BuildRequires:	qubes-libvchan-devel
+#BuildRequires:	qubes-libvchan-devel
+BuildRequires:	qubes-libvchan-kvm-devel
 BuildRequires:	systemd-devel
 BuildRequires:  python%{python3_pkgversion}-devel
 Requires:	qubes-libvchan
