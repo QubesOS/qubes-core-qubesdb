@@ -5,6 +5,7 @@
 #include <unistd.h>
 #else
 #define strdup _strdup
+#include <windows.h>
 #include <strsafe.h>
 #endif
 
