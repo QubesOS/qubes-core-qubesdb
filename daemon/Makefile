@@ -5,6 +5,7 @@ EXEEXT =
 SYSTEMD ?= 1
 
 BACKEND_VMM ?= $(shell pkg-config --cflags vchan | sed 's/.*vchan-//')
+ROOTDIR := $(patsubst %daemon/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 ifneq ($(OS),Windows_NT)
 CFLAGS += -fPIC -O2
@@ -23,6 +24,7 @@ CFLAGS += -DUNICODE -D_UNICODE
 LIBS += -L$(QUBES_LIBS) -lvchan
 endif
 CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
+CFLAGS += -ffile-prefix-map=$(ROOTDIR)=.
 
 SBINDIR ?= /usr/sbin
 

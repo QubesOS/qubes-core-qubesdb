@@ -22,9 +22,6 @@
 #
 #
 
-# Package contains /usr/lib, but not binary files, which confuses find-debuginfo.sh script.
-%global debug_package %{nil}
-
 Name:		qubes-db-dom0
 Version:	@VERSION@
 Release:	1%{?dist}
@@ -45,8 +42,6 @@ QubesDB daemon service.
 
 %prep
 %setup -q -n qubes-db-%{version}
-
-%build
 
 %install
 install -d %{buildroot}%{_unitdir}

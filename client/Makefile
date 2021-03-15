@@ -1,8 +1,10 @@
 BACKEND_VMM ?= $(shell pkg-config --cflags vchan | sed 's/.*vchan-//')
+ROOTDIR := $(patsubst %client/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 CFLAGS += -I../include -g -Wall -Wextra -Werror -pie
 CFLAGS += -fPIC
 CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
+CFLAGS += -ffile-prefix-map=$(ROOTDIR)=.
 
 LIBDIR=/usr/lib64
 BINDIR=/usr/bin
