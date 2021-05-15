@@ -235,7 +235,7 @@ void usage(char *argv0) {
     fprintf(stderr, "  watch [-n N] path [path...] - watch given path(s) for "
             "modifications\n");
     fprintf(stderr, "    if -n given you can specify how many events should "
-            "be received before terminating\n");
+            "be received before terminating (default: 1, negative: infinite)\n");
 }
 
 int main(int argc, char **argv) {
