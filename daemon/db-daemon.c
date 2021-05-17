@@ -679,7 +679,6 @@ int fuzz_main(int argc, char **argv) {
     struct db_daemon_data d;
 #ifndef WIN32
     int ready_pipe[2] = {0, 0};
-    pid_t pid;
 #endif
     int ret;
 
@@ -714,7 +713,7 @@ int fuzz_main(int argc, char **argv) {
             perror("pipe");
             exit(1);
         }
-        switch (pid = fork()) {
+        switch (fork()) {
             case -1:
                 perror("fork");
                 exit(1);

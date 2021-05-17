@@ -457,6 +457,7 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
         plist_tmp->path = strdup(hdr.path);
         if (!plist_tmp->path) {
             /* OOM */
+            free(plist_tmp);
             free_path_list(plist);
             return NULL;
         }
