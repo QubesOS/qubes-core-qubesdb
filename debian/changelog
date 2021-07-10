@@ -1,3 +1,20 @@
+qubesdb (4.1.11-1) unstable; urgency=medium
+
+  [ Olivier MEDOC ]
+  * archlinux: pin PKGBUILD to python3.X major version as new python
+    version will break the API
+
+  [ Shawn Anastasio ]
+  * client: Treat getopt(3) return value as int instead of char
+
+  [ 3hhh ]
+  * qubesdb-cmd watch: some doc clarifications for -n
+
+  [ herypt ]
+  * Fix memory leak
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 10 Jul 2021 05:13:14 +0200
+
 qubesdb (4.1.10-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
