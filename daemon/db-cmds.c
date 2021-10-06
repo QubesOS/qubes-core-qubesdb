@@ -15,8 +15,18 @@
 
 #include <libvchan.h>
 
+#include "buffer.h"
 #include <qubesdb.h>
 #include "qubesdb_internal.h"
+
+#if defined(_MSC_VER)
+#if !defined(size_t)
+#define size_t SIZE_T
+#endif
+#if !defined(ssize_t)
+#define ssize_t SSIZE_T
+#endif
+#endif
 
 /** Check if given string matches path specification (i.e. have only allowed
  * characters). This function allows for '/' at the end, so if particular
@@ -144,7 +154,7 @@ int vchan_write_nonblock(libvchan_t *vchan, char *buf, size_t size) {
 int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
     int ret, count;
-    struct buffer *write_queue;
+    struct buffer *write_queue = NULL;
     int buf_datacount;
 
     if (c == NULL) {

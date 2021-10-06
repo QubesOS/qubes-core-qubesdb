@@ -9,7 +9,6 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include "buffer.h"
 #else
 #include <windows.h>
 #include <sddl.h>
@@ -35,6 +34,7 @@ struct thread_param {
 };
 #endif
 
+#include "buffer.h"
 #include <qubesdb.h>
 #include "qubesdb_internal.h"
 
