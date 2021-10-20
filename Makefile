@@ -1,5 +1,5 @@
 RPMS_DIR = rpm/
-VERSION = $(shell cat version)
+VERSION = $(file <version)
 
 help:
 	@echo "make all                   -- compile all binaries"
