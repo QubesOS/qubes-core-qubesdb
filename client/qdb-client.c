@@ -90,7 +90,7 @@ static int connect_to_daemon(struct qdb_handle *qh) {
     status = QpsConnect(pipe_name, &qh->read_pipe, &qh->write_pipe);
     if (status != ERROR_SUCCESS)
     {
-        win_perror2(status, "connect to server");
+        // win_perror2(status, "connect to server");
         return 0;
     }
 
