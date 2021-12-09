@@ -154,7 +154,9 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
             return 1;
         write_queue = d->vchan_buffer;
     } else {
+#ifndef WIN32
         write_queue = c->write_queue;
+#endif
     }
 
 #ifdef WIN32
@@ -168,9 +170,11 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
 
     /* now it's either vchan, or local client on Linux */
     while ((buf_datacount = buffer_datacount(write_queue))) {
+#ifndef WIN32
         if (c)
             ret = write(c->fd, buffer_data(write_queue), buf_datacount);
         else
+#endif
             ret = vchan_write_nonblock(d->vchan, buffer_data(write_queue), buf_datacount);
         if (ret < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -187,9 +191,11 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
 
     count = 0;
     while (count < data_len) {
+#ifndef WIN32
         if (c)
             ret = write(c->fd, data+count, data_len-count);
         else
+#endif
             ret = vchan_write_nonblock(d->vchan, data+count, data_len-count);
         if (ret < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
