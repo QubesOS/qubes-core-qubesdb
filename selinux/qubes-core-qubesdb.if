@@ -1,0 +1,17 @@
+## <summary>
+##	Read and write qubesdb
+## </summary>
+## <param name="domain">
+## <summary>
+##	Domain allowed access
+## </summary
+## </param>
+interface(`ipp_qubesdb_talk',`
+	optional_policy(`
+		gen_require(`
+			type qubes_var_run_t, $1;
+		')
+		stream_connect_pattern($1, qubes_var_run_t, qubes_qubesdb_socket_t, qubes_qubesdb_daemon_t)
+		rw_sock_files_pattern($1, qubes_var_run_t, qubes_qubesdb_socket_t)
+	')
+')

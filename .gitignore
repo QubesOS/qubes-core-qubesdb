@@ -8,3 +8,5 @@
 rpm/
 deb/
 pkgs/
+/selinux/*.pp
+/selinux/tmp/

@@ -25,6 +25,8 @@
 # Package contains /usr/lib, but not binary files, which confuses find-debuginfo.sh script.
 %global debug_package %{nil}
 
+%global qubes_db_vm_selinux %{_datadir}/selinux/packages/qubes-core-qubesdb.pp
+
 Name:		qubes-db-vm
 Version:	@VERSION@
 Release:	1%{?dist}
@@ -41,6 +43,36 @@ BuildRequires: systemd
 
 Source0: qubes-db-%{version}.tar.gz
 
+Requires: (%{name}-selinux if selinux-policy)
+%package selinux
+
+BuildRequires: selinux-policy
+BuildRequires: selinux-policy-devel
+%{?selinux_requires}
+
+Summary: SELinux policies for qubesdb
+License: GPLv2+
+
+%description selinux
+The SELinux policies for qubesdb.  You need this package if you want to have
+SELinux enforcing in a qube.
+
+%files selinux
+%{_datadir}/selinux/devel/include/contrib/ipp-qubes-core-qubesdb.if
+%{qubes_db_vm_selinux}
+
+%post selinux
+%selinux_modules_install %{qubes_db_vm_selinux}
+
+%postun selinux
+if [ "$1" -eq 0 ]; then
+    %selinux_modules_uninstall %{qubes_db_vm_selinux}
+fi || :
+
+%posttrans selinux
+%selinux_relabel_post
+exit 0
+
 %description
 QubesDB daemon service.
 
@@ -48,10 +80,14 @@ QubesDB daemon service.
 %setup -q -n qubes-db-%{version}
 
 %build
+make -f /usr/share/selinux/devel/Makefile -C selinux
 
 %install
 install -d %{buildroot}%{_unitdir}
 install -p -m 644 daemon/qubes-db.service %{buildroot}%{_unitdir}/
+
+install -m 0644 -D selinux/qubes-core-qubesdb.if %{buildroot}%{_datadir}/selinux/devel/include/contrib/ipp-qubes-core-qubesdb.if
+install -m 0644 -D -t %{buildroot}%{_datadir}/selinux/packages selinux/qubes-core-qubesdb.pp
 
 %post
 %systemd_post qubes-db.service

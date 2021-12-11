@@ -1,0 +1,31 @@
+policy_module(qubes-core-qubesdb, 0.0.1)
+
+type qubes_qubesdb_daemon_t;
+type qubes_qubesdb_daemon_exec_t;
+type qubes_qubesdb_socket_t;
+attribute qubes_qubesdb_access;
+files_pid_file(qubes_qubesdb_socket_t)
+init_daemon_domain(qubes_qubesdb_daemon_t, qubes_qubesdb_daemon_exec_t)
+allow qubes_qubesdb_daemon_t self:process fork;
+allow qubes_qubesdb_daemon_t self:unix_dgram_socket { create getopt setopt write };
+kernel_dgram_send(qubes_qubesdb_daemon_t)
+allow qubes_qubesdb_daemon_t qubes_qubesdb_socket_t:sock_file { create getattr unlink };
+dev_rw_xen(qubes_qubesdb_daemon_t)
+
+optional {
+	require {
+		type qubes_var_run_t;
+	}
+	files_pid_file(qubes_var_run_t)
+	type_transition qubes_qubesdb_daemon_t qubes_var_run_t:sock_file qubes_qubesdb_socket_t "qubesdb.sock";
+	allow qubes_qubesdb_daemon_t qubes_var_run_t:dir { add_name remove_name search write };
+}
+
+ipp_qubesdb_talk(xdm_t)
+ipp_qubesdb_talk(xend_t)
+ipp_qubesdb_talk(NetworkManager_t)
+ipp_qubesdb_talk(local_login_t)
+ipp_qubesdb_talk(pulseaudio_t)
+ipp_qubesdb_talk(staff_t)
+ipp_qubesdb_talk(sysadm_t)
+ipp_qubesdb_talk(udev_t)
