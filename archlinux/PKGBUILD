@@ -1,6 +1,6 @@
 pkgname=qubes-db-vm
 pkgver=`cat version`
-pkgrel=5
+pkgrel=6
 epoch=
 pkgdesc="QubesDB libs and daemon service."
 arch=("x86_64")
@@ -9,7 +9,7 @@ license=('GPL')
 groups=()
 depends=(qubes-libvchan
   # Block updating if there is a major python update as the python API will be in the wrong PYTHONPATH
-  'python<3.10'
+  'python<3.11'
   )
 makedepends=(qubes-libvchan python)
 checkdepends=()
