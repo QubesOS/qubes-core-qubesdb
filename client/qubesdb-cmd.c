@@ -46,6 +46,7 @@ static void encode_and_print_value(char *val) {
             printf("\\x%02x", val[i]);
 #endif
     }
+    fputs("\n", stdout);
 }
 
 static int cmd_read(qdb_handle_t h, int argc, char **args) {
@@ -69,7 +70,6 @@ static int cmd_read(qdb_handle_t h, int argc, char **args) {
             if (opt_fullpath)
                 printf("%s = ", args[i]);
             encode_and_print_value(value);
-            printf("\n");
         } else {
             if (!opt_quiet) {
                 fprintf(stderr, "Failed to read %s\n", args[i]);
@@ -107,7 +107,6 @@ static int cmd_multiread(qdb_handle_t h, int argc, char **args) {
         while (path_value[j]) {
             printf("%s = ", path_value[j]+basepath_len);
             encode_and_print_value(path_value[j+1]);
-            printf("\n");
             free(path_value[j]);
             free(path_value[j+1]);
             j += 2;
