@@ -39,4 +39,17 @@ int buffer_datacount(struct buffer *b);
 char *buffer_data(struct buffer *b);
 void buffer_substract(struct buffer *b, int count);
 
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN 1
+#include <Winbase.h>
+#endif
+
+static inline void buffer_secure_zero(void *buf, size_t size) {
+#ifdef _WIN32
+    SecureZeroMemory(buf, size);
+#else
+    explicit_bzero(buf, size);
+#endif
+}
+
 #endif /* _BUFFER_H */

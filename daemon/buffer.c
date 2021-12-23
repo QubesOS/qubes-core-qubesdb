@@ -47,8 +47,10 @@ struct buffer *buffer_create(void)
 void buffer_free(struct buffer *b) {
     if (!b)
         return;
-    if (b->buffer)
+    if (b->buffer) {
+        buffer_secure_zero(b->buffer, b->buffer_size);
         free(b->buffer);
+    }
     free(b);
 }
 
@@ -67,6 +69,7 @@ int buffer_append(struct buffer *b, char *buf, int size)
             return 0;
         }
         memcpy(newbuf, b->buffer + b->data_offset, b->data_count);
+        buffer_secure_zero(b->buffer, b->buffer_size);
         free(b->buffer);
         b->buffer = newbuf;
         b->buffer_size = newsize;
@@ -94,6 +97,7 @@ void buffer_substract(struct buffer *b, int count)
     b->data_offset += count;
     if (b->data_count == 0) {
         if (b->buffer_size > BUFFER_SIZE_MIN) {
+            buffer_secure_zero(b->buffer, b->buffer_size);
             free(b->buffer);
             b->buffer = malloc(BUFFER_SIZE_MIN);
             if (!b->buffer) {
