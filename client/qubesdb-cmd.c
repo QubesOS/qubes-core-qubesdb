@@ -234,6 +234,7 @@ static void usage(char *argv0) {
     fprintf(stderr, "  -d <domain> - specify destination domain, available only in dom0\n");
     fprintf(stderr, "  -w - wait for any value (possibly empty)\n");
     fprintf(stderr, "  -x - remove the value after reading it (affects reading commands)\n");
+    fprintf(stderr, "  -h - print this message\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Available commands:\n");
     fprintf(stderr, "  read path [path...] - read value(s)\n");
