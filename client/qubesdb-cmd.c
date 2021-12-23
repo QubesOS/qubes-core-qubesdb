@@ -22,7 +22,7 @@ enum {
     DO_RM,
     DO_MULTIREAD,
     DO_LIST,
-    DO_WATCH
+    DO_WATCH,
 } qdb_cmd;
 
 static void encode_and_print_value(char *val) {
