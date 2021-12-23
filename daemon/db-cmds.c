@@ -52,8 +52,12 @@ static int verify_path(char *path) {
         if (path[i] >= '0' && path[i] <= '9')
             continue;
         switch (path[i]) {
-            case '_':
             case '-':
+                if (i)
+                    break;
+                /* leading dash forbidden */
+                return 0;
+            case '_':
             case '/':
             case '.':
             case ':':
