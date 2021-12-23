@@ -145,6 +145,10 @@ int qubesdb_write(struct qubesdb *db, char *path, char *data, int data_len) {
     } else {
         db_entry->value = strdup("");
     }
+    if (!db_entry->value) {
+        fputs("malloc(3) failed\n", stderr);
+        _exit(1);
+    }
     db_entry->value_len = data_len;
     return 1;
 }
