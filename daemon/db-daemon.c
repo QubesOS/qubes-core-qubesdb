@@ -193,7 +193,7 @@ int mainloop(struct db_daemon_data *d) {
         case 1: {
             // service stopped
             LogInfo("service stopped, exiting");
-            return 1;
+            goto cleanup;
         }
 
         case 2: {
@@ -243,6 +243,21 @@ int mainloop(struct db_daemon_data *d) {
         }
         }
     }
+
+cleanup:
+    if (WaitForSingleObject(pipe_thread, 1000) != WAIT_OBJECT_0)
+    {
+        TerminateThread(pipe_thread, 0);
+        CloseHandle(pipe_thread);
+    }
+    QpsDestroy(d->pipe_server);
+    d->pipe_server = NULL;
+    if (d->vchan)
+    {
+        libvchan_close(d->vchan);
+        d->vchan = NULL;
+    }
+
     return 1;
 }
 
@@ -271,6 +286,7 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
             return 1;
         }
     }
+    return 0;
 }
 
 void client_connected_callback(PIPE_SERVER server, LONGLONG id, PVOID context) {
@@ -338,7 +354,8 @@ int init_server_socket(struct db_daemon_data *d) {
 }
 
 void close_server_socket(struct db_daemon_data *d) {
-    QpsDestroy(d->pipe_server);
+    if (d->pipe_server)
+        QpsDestroy(d->pipe_server);
     d->pipe_server = NULL;
 }
 #endif // WIN32
@@ -686,7 +703,11 @@ int fuzz_main(int argc, char **argv) {
         exit(1);
     }
 
+#ifndef WIN32
     memset(&d, 0, sizeof(d));
+#else
+    RtlSecureZeroMemory(&d, sizeof(d));
+#endif
 
     d.remote_domid = atoi(argv[1]);
     if (argc >= 3 && strlen(argv[2]) > 0)
@@ -819,9 +840,6 @@ int fuzz_main(int argc, char **argv) {
 
     ret = !mainloop(&d);
 #endif /* !WIN32 */
-
-    if (d.vchan)
-        libvchan_close(d.vchan);
 
     close_server_socket(&d);
 
