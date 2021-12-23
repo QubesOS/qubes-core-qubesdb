@@ -15,6 +15,7 @@ static int opt_raw = 0;
 static int opt_quiet = 0;
 static int opt_watch_count = 1;
 static int opt_wait = 0;
+static int opt_rm = 0;
 
 enum {
     DO_READ = 1,
@@ -71,6 +72,10 @@ static int cmd_read(qdb_handle_t h, int argc, char **args) {
                 fprintf(stderr, "Failed to read %s\n", args[i]);
             }
             anything_failed = 1;
+        }
+        if (opt_rm) {
+            if (qdb_rm(h, args[i]) != 1)
+                anything_failed = 1;
         }
     }
 
@@ -225,6 +230,7 @@ static void usage(char *argv0) {
     fprintf(stderr, "  -c <command> - specify command\n");
     fprintf(stderr, "  -d <domain> - specify destination domain, available only in dom0\n");
     fprintf(stderr, "  -w - wait for any value (possibly empty)\n");
+    fprintf(stderr, "  -x - remove the value after reading it (affects reading commands)\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Available commands:\n");
     fprintf(stderr, "  read path [path...] - read value(s)\n");
@@ -252,9 +258,9 @@ int main(int argc, char **argv) {
     }
 
 #ifndef WIN32
-    while ((opt = getopt(argc, argv, "hc:d:n:frqw")) != -1)
+    while ((opt = getopt(argc, argv, "hxc:d:n:frqw")) != -1)
 #else
-    while ((opt = getopt(argc, argv, "hc:d:n:frqw")) != 0)
+    while ((opt = getopt(argc, argv, "hxc:d:n:frqw")) != 0)
 #endif
     {
         switch (opt) {
@@ -270,6 +276,9 @@ int main(int argc, char **argv) {
                 break;
             case 'r':
                 opt_raw = 1;
+                break;
+            case 'x':
+                opt_rm = 1;
                 break;
             case 'q':
                 opt_quiet = 1;
