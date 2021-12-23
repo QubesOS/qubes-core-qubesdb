@@ -50,16 +50,19 @@ static void encode_and_print_value(char *val) {
 
 static int cmd_read(qdb_handle_t h, int argc, char **args) {
     int i;
-    char *value;
+    char *value, *path;
     int anything_failed = 0;
 
     for (i=0; i < argc; i++) {
         value = qdb_read(h, args[i], NULL);
-        if (opt_wait) {
-            qdb_watch(h, args[i]);
-            while (!(value = qdb_read(h, args[i], NULL)))
-            {
-                qdb_read_watch(h);
+        if (!value && opt_wait) {
+            anything_failed |= qdb_watch(h, args[i]) != 1;
+            while (!(value = qdb_read(h, args[i], NULL))) {
+                if ((path = qdb_read_watch(h))) {
+                    free(path);
+                } else {
+                    anything_failed = 1;
+                }
             }
         }
         if (value) {
