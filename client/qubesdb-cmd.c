@@ -295,7 +295,8 @@ int main(int argc, char **argv) {
                 break;
             case 'h':
                 usage(argv[0]);
-                exit(0);
+                ret = 0;
+                goto finish;
 #ifndef WIN32
             default:
                 usage(argv[0]);
@@ -345,5 +346,10 @@ int main(int argc, char **argv) {
             break;
     }
     qdb_close(h);
+finish:
+    fflush(stdout);
+    fflush(stderr);
+    if (ferror(stdout) || ferror(stderr))
+        return 1;
     return ret;
 }
