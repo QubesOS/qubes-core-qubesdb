@@ -48,7 +48,7 @@ struct qdb_handle {
     struct path_list *watch_list;
 };
 
-void free_path_list(struct path_list *plist) {
+static void free_path_list(struct path_list *plist) {
     struct path_list *tmp;
 
     while (plist) {

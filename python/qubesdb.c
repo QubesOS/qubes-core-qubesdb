@@ -531,8 +531,10 @@ static struct PyModuleDef qubesdb_module = {
 #endif
 
 #if PY_VERSION_HEX >= 0x03000000
+PyMODINIT_FUNC PyInit_qubesdb(void);
 PyMODINIT_FUNC PyInit_qubesdb(void)
 #else
+PyMODINIT_FUNC initqubesdb(void);
 PyMODINIT_FUNC initqubesdb(void)
 #endif
 {

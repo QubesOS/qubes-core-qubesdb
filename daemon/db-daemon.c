@@ -42,7 +42,7 @@ int init_vchan(struct db_daemon_data *d);
 
 #ifndef WIN32
 int sigterm_received = 0;
-void sigterm_handler(int s) {
+static void sigterm_handler(int s) {
     sigterm_received = 1;
 }
 
@@ -51,7 +51,7 @@ void sigterm_handler(int s) {
  * @param c Socket of new client
  * @return 1 on success, 0 on failure
  */
-int add_client(struct db_daemon_data *d, client_socket_t c) {
+static int add_client(struct db_daemon_data *d, client_socket_t c) {
     struct client *client;
 
     client = malloc(sizeof(*client));
@@ -78,7 +78,7 @@ int add_client(struct db_daemon_data *d, client_socket_t c) {
  * @param c Socket of client to disconnect
  * @return 1 on success, 0 on failure
  */
-int disconnect_client(struct db_daemon_data *d, struct client *c) {
+static int disconnect_client(struct db_daemon_data *d, struct client *c) {
     struct client *client, *prev_client;
 
     if (!handle_client_disconnect(d, c))
@@ -109,7 +109,7 @@ int disconnect_client(struct db_daemon_data *d, struct client *c) {
  * @param d Daemon global data
  * @return 1 on success, 0 on failure
  */
-int accept_new_client(struct db_daemon_data *d) {
+static int accept_new_client(struct db_daemon_data *d) {
     client_socket_t new_client_fd;
     struct sockaddr_un peer;
     unsigned int addrlen;
@@ -375,7 +375,7 @@ void close_server_socket(struct db_daemon_data *d) {
 
 #ifndef WIN32
 
-int fill_fdsets_for_select(struct db_daemon_data *d,
+static int fill_fdsets_for_select(struct db_daemon_data *d,
         fd_set * read_fdset, fd_set * write_fdset) {
     struct client *client;
     int max_fd;
@@ -409,7 +409,7 @@ int fill_fdsets_for_select(struct db_daemon_data *d,
     return max_fd;
 }
 
-int mainloop(struct db_daemon_data *d) {
+static int mainloop(struct db_daemon_data *d) {
     fd_set read_fdset;
     fd_set write_fdset;
     struct client *client;
@@ -512,7 +512,7 @@ int mainloop(struct db_daemon_data *d) {
 }
 
 #define MAX_FILE_PATH 256
-int init_server_socket(struct db_daemon_data *d) {
+static int init_server_socket(struct db_daemon_data *d) {
     char socket_address[MAX_FILE_PATH];
     struct sockaddr_un sockname;
     int s;
@@ -612,7 +612,7 @@ int init_vchan(struct db_daemon_data *d) {
 }
 
 #ifndef WIN32
-int create_pidfile(struct db_daemon_data *d) {
+static int create_pidfile(struct db_daemon_data *d) {
     char pidfile_name[256];
     FILE *pidfile;
     mode_t old_umask;
@@ -638,7 +638,7 @@ int create_pidfile(struct db_daemon_data *d) {
     return 1;
 }
 
-void remove_pidfile(struct db_daemon_data *d) {
+static void remove_pidfile(struct db_daemon_data *d) {
     char pidfile_name[256];
     struct stat stat_buf;
 
@@ -655,7 +655,7 @@ void remove_pidfile(struct db_daemon_data *d) {
     }
 }
 
-void close_server_socket(struct db_daemon_data *d) {
+static void close_server_socket(struct db_daemon_data *d) {
     struct sockaddr_un sockname;
     socklen_t addrlen;
     struct stat stat_buf;
@@ -677,7 +677,7 @@ void close_server_socket(struct db_daemon_data *d) {
 }
 #endif // !WIN32
 
-void usage(char *argv0) {
+static void usage(char *argv0) {
     fprintf(stderr, "Usage: %s <remote-domid> [<remote-name>]\n", argv0);
     fprintf(stderr, "       Give <remote-name> only in dom0\n");
 }

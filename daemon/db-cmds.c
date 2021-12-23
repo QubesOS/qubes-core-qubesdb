@@ -35,7 +35,7 @@
  * @param path String to check
  * @return 1 if everything is OK, 0 if path is invalid
  */
-int verify_path(char *path) {
+static int verify_path(char *path) {
     int i;
     int path_len;
 
@@ -73,7 +73,7 @@ int verify_path(char *path) {
  * @param len Data size
  * @return 1 if everything is OK, 0 if invalid data detected
  */
-int verify_data(char *data, int len) {
+static int verify_data(char *data, int len) {
     int i;
 
     for (i = 0; i < len; i++) {
@@ -89,7 +89,7 @@ int verify_data(char *data, int len) {
  * @param vchan Does message was received via vchan link?
  * @return 1 if OK, 0 if some invalid field value was detected
  */
-int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
+static int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
     switch (untrusted_hdr->type) {
         case QDB_CMD_READ:
         case QDB_CMD_LIST:
@@ -133,7 +133,7 @@ int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
  * FIXME: this is suspectible to race condition if remote side is malicious,
  * proper solution require exposing blocking flag on libvchan API.
  */
-int vchan_write_nonblock(libvchan_t *vchan, char *buf, size_t size) {
+static int vchan_write_nonblock(libvchan_t *vchan, char *buf, size_t size) {
     size_t avail = libvchan_buffer_space(vchan);
     ssize_t ret;
     if (avail < size)
@@ -222,7 +222,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
     return 1;
 }
 
-int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
+static int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
 #ifndef WIN32
     int ret, count;
@@ -275,7 +275,7 @@ int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
  * @param amount Size of data to discard in bytes.
  * @return 1 on success, 0 on failure
      */
-int discard_data(struct db_daemon_data *d, struct client *client, int amount) {
+static int discard_data(struct db_daemon_data *d, struct client *client, int amount) {
     char buf[256];
     int data_to_read;
 
@@ -297,7 +297,7 @@ int discard_data(struct db_daemon_data *d, struct client *client, int amount) {
  * @return 1 on success, 0 on failure (recovery failed and client should be
  * disconnected).
  */
-int discard_data_and_send_error(struct db_daemon_data *d, struct client *client,
+static int discard_data_and_send_error(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     if (discard_data(d, client, hdr->data_len)) {
         hdr->type = QDB_RESP_ERROR;
@@ -389,7 +389,7 @@ int send_watch_notify(struct client *c, char *buf, size_t len, PIPE_SERVER ps)
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_write(struct db_daemon_data *d, struct client *client,
+static int handle_write(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     char untrusted_data[QDB_MAX_DATA];
     char *data;
@@ -443,7 +443,7 @@ int handle_write(struct db_daemon_data *d, struct client *client,
  *           disconnected.
  */
 /* this command is valid on both client socket and vchan */
-int handle_rm(struct db_daemon_data *d, struct client *client,
+static int handle_rm(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     if (hdr->data_len > 0) {
         fprintf(stderr, "CMD_RM shouldn't have data field\n");
@@ -485,7 +485,7 @@ int handle_rm(struct db_daemon_data *d, struct client *client,
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_read(struct db_daemon_data *d, struct client *client,
+static int handle_read(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     struct qubesdb_entry *db_entry;
 
@@ -525,7 +525,7 @@ int handle_read(struct db_daemon_data *d, struct client *client,
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_multiread(struct db_daemon_data *d, struct client *client,
+static int handle_multiread(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     struct qubesdb_entry *db_entry;
     char search_path[QDB_MAX_PATH];
@@ -589,7 +589,7 @@ int handle_multiread(struct db_daemon_data *d, struct client *client,
  *           error message), 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_list(struct db_daemon_data *d, struct client *client,
+static int handle_list(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
     struct qubesdb_entry *db_entry;
     char search_path[QDB_MAX_PATH];
@@ -640,7 +640,7 @@ int handle_list(struct db_daemon_data *d, struct client *client,
  * @return 1 on success, 0 if fatal error occured and client should be
  *           disconnected.
  */
-int handle_vchan_multiread_resp(struct db_daemon_data *d, struct qdb_hdr *hdr) {
+static int handle_vchan_multiread_resp(struct db_daemon_data *d, struct qdb_hdr *hdr) {
     char data[QDB_MAX_DATA];
 
     if (hdr->data_len && libvchan_recv(d->vchan, data, hdr->data_len) < 0) {

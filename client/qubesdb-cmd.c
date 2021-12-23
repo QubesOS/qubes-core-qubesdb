@@ -10,11 +10,11 @@
 
 #include <qubesdb-client.h>
 
-int opt_fullpath = 0;
-int opt_raw = 0;
-int opt_quiet = 0;
-int opt_watch_count = 1;
-int opt_wait = 0;
+static int opt_fullpath = 0;
+static int opt_raw = 0;
+static int opt_quiet = 0;
+static int opt_watch_count = 1;
+static int opt_wait = 0;
 
 enum {
     DO_READ = 1,
@@ -25,7 +25,7 @@ enum {
     DO_WATCH
 } qdb_cmd;
 
-void encode_and_print_value(char *val) {
+static void encode_and_print_value(char *val) {
     size_t i;
     size_t len;
 
@@ -47,7 +47,7 @@ void encode_and_print_value(char *val) {
     }
 }
 
-int cmd_read(qdb_handle_t h, int argc, char **args) {
+static int cmd_read(qdb_handle_t h, int argc, char **args) {
     int i;
     char *value;
     int anything_failed = 0;
@@ -77,7 +77,7 @@ int cmd_read(qdb_handle_t h, int argc, char **args) {
     return anything_failed;
 }
 
-int cmd_multiread(qdb_handle_t h, int argc, char **args) {
+static int cmd_multiread(qdb_handle_t h, int argc, char **args) {
     int i, j;
     char **path_value;
     int anything_failed = 0;
@@ -109,7 +109,7 @@ int cmd_multiread(qdb_handle_t h, int argc, char **args) {
     return anything_failed;
 }
 
-int cmd_write(qdb_handle_t h, int argc, char **args) {
+static int cmd_write(qdb_handle_t h, int argc, char **args) {
     int i;
     int anything_failed = 0;
 
@@ -128,7 +128,7 @@ int cmd_write(qdb_handle_t h, int argc, char **args) {
     return anything_failed;
 }
 
-int cmd_rm(qdb_handle_t h, int argc, char **args) {
+static int cmd_rm(qdb_handle_t h, int argc, char **args) {
     int i;
     int anything_failed = 0;
 
@@ -142,7 +142,7 @@ int cmd_rm(qdb_handle_t h, int argc, char **args) {
     return anything_failed;
 }
 
-int cmd_list(qdb_handle_t h, int argc, char **args) {
+static int cmd_list(qdb_handle_t h, int argc, char **args) {
     int i;
     char **paths;
     size_t basepath_len;
@@ -170,7 +170,7 @@ int cmd_list(qdb_handle_t h, int argc, char **args) {
     return 0;
 }
 
-int cmd_watch(qdb_handle_t h, int argc, char **args) {
+static int cmd_watch(qdb_handle_t h, int argc, char **args) {
     int i;
     char *fired_watch;
 
@@ -198,7 +198,7 @@ int cmd_watch(qdb_handle_t h, int argc, char **args) {
     return 0;
 }
 
-int parse_cmd(char *cmd_str) {
+static int parse_cmd(char *cmd_str) {
     if (!strcmp(cmd_str, "read"))
         return DO_READ;
     else if (!strcmp(cmd_str, "write"))
@@ -215,7 +215,7 @@ int parse_cmd(char *cmd_str) {
         return 0;
 }
 
-void usage(char *argv0) {
+static void usage(char *argv0) {
     fprintf(stderr,
             "Usage: %s [-frq] [-c <command>] [-d <destination domain>] \n"
             "       [command arguments]\n", argv0);
