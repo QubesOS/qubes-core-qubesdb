@@ -26,27 +26,41 @@ enum {
     DO_WATCH,
 } qdb_cmd;
 
-static void encode_and_print_value(char *val) {
+static int encode_and_print_value(char *val) {
     size_t i;
-    size_t len;
+    size_t len = strlen(val);
 
     if (opt_raw) {
-        printf("%s", val);
-        return;
+        i = len + 1;
+        val[len] = '\n';
+        if (fwrite(val, 1, i, stdout) != i) {
+            perror("fwrite");
+            return 1;
+        }
+        return 0;
     }
-    len = strlen(val);
     for (i = 0; i < len; i++) {
+        int status;
         if (val[i] >= 0x20 && (unsigned char)val[i] < 0x80)
-            printf("%c", val[i]);
-        else
+            status = printf("%c", val[i]);
+        else {
 #ifndef WIN32
-            printf("\\x%02hhx", val[i]);
+            status = printf("\\x%02hhx", (unsigned int)val[i]);
 #else
             /* windows doesn't support 'h' modifier */
-            printf("\\x%02x", val[i]);
+            status = printf("\\x%02x", (unsigned int)val[i]);
 #endif
+        }
+        if (status < 0) {
+            perror("printf");
+            return 1;
+        }
     }
-    fputs("\n", stdout);
+    if (fputs("\n", stdout) == EOF) {
+        perror("fputs");
+        return 1;
+    }
+    return 0;
 }
 
 static int cmd_read(qdb_handle_t h, int argc, char **args) {
@@ -69,7 +83,7 @@ static int cmd_read(qdb_handle_t h, int argc, char **args) {
         if (value) {
             if (opt_fullpath)
                 printf("%s = ", args[i]);
-            encode_and_print_value(value);
+            anything_failed |= encode_and_print_value(value);
         } else {
             if (!opt_quiet) {
                 fprintf(stderr, "Failed to read %s\n", args[i]);
@@ -106,7 +120,7 @@ static int cmd_multiread(qdb_handle_t h, int argc, char **args) {
         j = 0;
         while (path_value[j]) {
             printf("%s = ", path_value[j]+basepath_len);
-            encode_and_print_value(path_value[j+1]);
+            anything_failed |= encode_and_print_value(path_value[j+1]);
             free(path_value[j]);
             free(path_value[j+1]);
             j += 2;
