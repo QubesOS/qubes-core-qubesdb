@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 #ifdef WIN32
 #include <windows.h>
 #include <getopt.h>
@@ -66,11 +67,13 @@ static int encode_and_print_value(char *val) {
 static int cmd_read(qdb_handle_t h, int argc, char **args) {
     int i;
     char *value, *path;
-    int anything_failed = 0;
+    int anything_failed = 0, is_enoent = 0;
 
     for (i=0; i < argc; i++) {
         value = qdb_read(h, args[i], NULL);
-        if (!value && opt_wait) {
+        if (!opt_wait)
+            is_enoent = !value && errno == ENOENT;
+        else if (!value) {
             anything_failed |= qdb_watch(h, args[i]) != 1;
             while (!(value = qdb_read(h, args[i], NULL))) {
                 if ((path = qdb_read_watch(h))) {
@@ -88,7 +91,8 @@ static int cmd_read(qdb_handle_t h, int argc, char **args) {
             if (!opt_quiet) {
                 fprintf(stderr, "Failed to read %s\n", args[i]);
             }
-            anything_failed = 1;
+            if (!is_enoent)
+                anything_failed = 1;
         }
         if (opt_rm) {
             if (qdb_rm(h, args[i]) != 1)
@@ -96,6 +100,8 @@ static int cmd_read(qdb_handle_t h, int argc, char **args) {
         }
     }
 
+    if (!anything_failed && is_enoent)
+        return 2;
     return anything_failed;
 }
 

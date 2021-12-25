@@ -7,8 +7,8 @@ usage: ${0} KEY [DEFAULT]
 
 Read KEY from Qubes DB and interpret it as boolean value. Non-empty string is
 considered true and both empty string and no value at are considered false. The
-value is reported as exit code, 0 for true, 1 for empty string and DEFAULT
-(if not specified, 2) for not found.
+value is reported as exit code, 0 for true, 1 for empty string, DEFAULT
+(if not specified, 2) for not found, and 3 for an error.
 EOF
     exit 3
 fi
@@ -20,7 +20,7 @@ result=$(qubesdb-read "$KEY" 2>/dev/null)
 
 if test $? -ne 0
 then
-    exit "$DEFAULT"
+    if test $? -eq 2; then exit "$DEFAULT"; else exit 3; fi
 elif test -z "$result"
 then
     exit 1
