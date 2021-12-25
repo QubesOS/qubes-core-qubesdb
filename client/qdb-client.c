@@ -367,9 +367,9 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
     hdr.data_len = 0;
     if (!send_command_to_daemon(h, &hdr, NULL))
         /* some fatal error perhaps? */
-        return NULL;
+        goto fail;
     if (!get_response(h, &hdr))
-        return NULL;
+        goto fail;
     /* TODO: make this distinguishable from other errors */
     if (hdr.type == QDB_RESP_ERROR_NOENT) {
         errno = ENOENT;
@@ -378,13 +378,13 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
     if (hdr.type == QDB_RESP_ERROR) {
         /* TODO? */
         assert(hdr.data_len == 0);
-        return NULL;
+        goto fail;
     }
     assert(hdr.type == QDB_RESP_READ);
     /* +1 for terminating \0 */
     value = malloc(hdr.data_len+1);
     if (!value)
-        return NULL;
+        goto fail;
     got_data = 0;
     while (got_data < hdr.data_len) {
 #ifdef WIN32
@@ -395,7 +395,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
         if (ret <= 0) {
 #endif
             free(value);
-            return NULL;
+            goto fail;
         }
         got_data += ret;
     }
@@ -405,6 +405,11 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
         *value_len = got_data;
 
     return value;
+fail:
+    /* ENOENT is returned for "no such path in QubesDB" */
+    if (errno == ENOENT || errno == 0)
+        errno = EPROTO;
+    return NULL;
 }
 
 char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
