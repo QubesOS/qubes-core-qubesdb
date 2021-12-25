@@ -364,8 +364,8 @@ int main(int argc, char **argv) {
     }
     qdb_close(h);
 finish:
-    fflush(stdout);
-    fflush(stderr);
+    if (fflush(stdout) == EOF || fflush(stderr) == EOF)
+        perror("fflush");
     if (ferror(stdout) || ferror(stderr))
         return 1;
     return ret;
