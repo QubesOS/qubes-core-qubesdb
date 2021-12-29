@@ -11,7 +11,7 @@ $(OUTDIR)/qubesdb-client.dll: ../client/qdb-client.c
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -lwindows-utils -DQUBESDBCLIENT_API -shared -DWIN32 -o $@
 
 $(OUTDIR)/qubesdb-cmd.exe: $(OUTDIR)/qubesdb-client.dll ../client/qubesdb-cmd.c
-	$(CC) ../client/qubesdb-cmd.c  $(CFLAGS) $(LDFLAGS) -lwindows-utils -lqubesdb-client -DWIN32 -o $@
+	$(CC) ../client/qubesdb-cmd.c  $(CFLAGS) $(LDFLAGS) -lwindows-utils -lqubesdb-client -DWIN32 -UUNICODE -U_UNICODE -mconsole -o $@
 
 $(OUTDIR)/qubesdb-daemon.exe: $(OUTDIR)/qubesdb-client.dll $(wildcard ../daemon/*.c)
-	$(CC) $(filter %.c,$^) $(CFLAGS) $(LDFLAGS) -lwindows-utils -lqubesdb-client -lvchan -DWIN32 -o $@
+	$(CC) $(filter %.c,$^) $(CFLAGS) $(LDFLAGS) -lwindows-utils -lqubesdb-client -lvchan -DWIN32 -UUNICODE -U_UNICODE -o $@
