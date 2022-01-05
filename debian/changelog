@@ -1,3 +1,16 @@
+qubesdb (4.1.12-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * spec: fix systemctl path
+
+  [ Demi Marie Obenour ]
+  * Use $(file <) instead of $(shell cat)
+
+  [ Otto Sabart ]
+  * archlinux: bump python dependency to v3.11
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 05 Jan 2022 19:22:03 +0100
+
 qubesdb (4.1.11-1) unstable; urgency=medium
 
   [ Olivier MEDOC ]
