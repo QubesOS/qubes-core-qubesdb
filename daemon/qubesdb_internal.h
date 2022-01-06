@@ -79,6 +79,7 @@ struct db_daemon_data {
     PIPE_SERVER pipe_server;
     SECURITY_ATTRIBUTES sa;
     HANDLE service_stop_event;
+    SRWLOCK lock;
 #else
     int socket_fd;              /* local server socket */
     struct client *client_list; /* local clients */
