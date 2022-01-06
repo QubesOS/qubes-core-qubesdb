@@ -155,10 +155,13 @@ int mainloop(struct db_daemon_data *d) {
         d->multiread_requested = 1;
         /* wait for complete response */
         while (d->multiread_requested) {
+            AcquireSRWLockExclusive(&d->lock);
             if (!handle_vchan_data(d)) {
                 LogError("FATAL: vchan error");
+                ReleaseSRWLockExclusive(&d->lock);
                 return 0;
             }
+            ReleaseSRWLockExclusive(&d->lock);
         }
     }
 
@@ -227,10 +230,13 @@ int mainloop(struct db_daemon_data *d) {
 
             if (d->remote_connected || libvchan_is_open(d->vchan)) {
                 while (libvchan_data_ready(d->vchan)) {
+                    AcquireSRWLockExclusive(&d->lock);
                     if (!handle_vchan_data(d)) {
                         fprintf(stderr, "FATAL: vchan data processing failed\n");
+                        ReleaseSRWLockExclusive(&d->lock);
                         return 0;
                     }
+                    ReleaseSRWLockExclusive(&d->lock);
                 }
             }
             break;
@@ -274,19 +280,24 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
         status = QpsRead(p->daemon->pipe_server, p->id, &hdr, sizeof(hdr));
         if (ERROR_SUCCESS != status) {
             LogWarning("QpsRead from client %lu failed: %d", p->id, (int)status);
+            AcquireSRWLockExclusive(&p->daemon->lock);
             handle_client_disconnect(p->daemon, &c);
             QpsDisconnectClient(p->daemon->pipe_server, p->id);
+            ReleaseSRWLockExclusive(&p->daemon->lock);
             free(param);
             return status;
         }
 
+        AcquireSRWLockExclusive(&p->daemon->lock);
         if (!handle_client_data(p->daemon, &c, (char*)&hdr, sizeof(hdr))) {
             LogWarning("handle_client_data failed, disconnecting client %lu", p->id);
             handle_client_disconnect(p->daemon, &c);
             QpsDisconnectClient(p->daemon->pipe_server, p->id);
+            ReleaseSRWLockExclusive(&p->daemon->lock);
             free(param);
             return 1;
         }
+        ReleaseSRWLockExclusive(&p->daemon->lock);
     }
     return 0;
 }
@@ -777,6 +788,7 @@ int fuzz_main(int argc, char **argv) {
 #else
     libvchan_register_logger(vchan_logger);
     d.db = qubesdb_init(send_watch_notify);
+    InitializeSRWLock(&d.lock);
 #endif
     if (!d.db) {
         fprintf(stderr, "FATAL: database initialization failed\n");
