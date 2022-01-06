@@ -274,6 +274,7 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
         status = QpsRead(p->daemon->pipe_server, p->id, &hdr, sizeof(hdr));
         if (ERROR_SUCCESS != status) {
             LogWarning("QpsRead from client %lu failed: %d", p->id, (int)status);
+            handle_client_disconnect(p->daemon, &c);
             QpsDisconnectClient(p->daemon->pipe_server, p->id);
             free(param);
             return status;
@@ -281,6 +282,7 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
 
         if (!handle_client_data(p->daemon, &c, (char*)&hdr, sizeof(hdr))) {
             LogWarning("handle_client_data failed, disconnecting client %lu", p->id);
+            handle_client_disconnect(p->daemon, &c);
             QpsDisconnectClient(p->daemon->pipe_server, p->id);
             free(param);
             return 1;
