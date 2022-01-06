@@ -1,3 +1,29 @@
+qubesdb (4.0.17-1) unstable; urgency=medium
+
+  [ Olivier MEDOC ]
+  * archlinux: pin PKGBUILD to python3.X major version as new python
+    version will break the API
+
+  [ Otto Sabart ]
+  * archlinux: bump python dependency to v3.11
+
+  [ Shawn Anastasio ]
+  * client: Treat getopt(3) return value as int instead of char
+
+  [ 3hhh ]
+  * qubesdb-cmd watch: some doc clarifications for -n
+
+  [ herypt ]
+  * Fix memory leak
+
+  [ Frédéric Pierret (fepitre) ]
+  * spec: fix systemctl path
+
+  [ Demi Marie Obenour ]
+  * Use $(file <) instead of $(shell cat)
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 06 Jan 2022 01:02:29 +0100
+
 qubesdb (4.0.16-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
