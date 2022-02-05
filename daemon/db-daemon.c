@@ -353,12 +353,13 @@ int fill_fdsets_for_select(struct db_daemon_data *d,
 
     FD_ZERO(read_fdset);
     FD_ZERO(write_fdset);
-    FD_SET(d->socket_fd, read_fdset);
+    QUBES_FD_SET(d->socket_fd, read_fdset);
     max_fd = d->socket_fd;
     if (d->vchan) {
-        FD_SET(libvchan_fd_for_select(d->vchan), read_fdset);
-        if (libvchan_fd_for_select(d->vchan) > max_fd)
-            max_fd = libvchan_fd_for_select(d->vchan);
+        int vchan_fd = libvchan_fd_for_select(d->vchan);
+        QUBES_FD_SET(vchan_fd, read_fdset);
+        if (vchan_fd > max_fd)
+            max_fd = vchan_fd;
     }
 
     client = d->client_list;
@@ -367,10 +368,11 @@ int fill_fdsets_for_select(struct db_daemon_data *d,
          * first try to send them all. If client do not handle write buffering
          * properly, it can cause a deadlock there, but at least qubesdb-daemon
          * will still handle other requests */
+        assert(client->fd < FD_SETSIZE);
         if (buffer_datacount(client->write_queue))
-            FD_SET(client->fd, write_fdset);
+            QUBES_FD_SET(client->fd, write_fdset);
         else
-            FD_SET(client->fd, read_fdset);
+            QUBES_FD_SET(client->fd, read_fdset);
         if (client->fd > max_fd)
             max_fd = client->fd;
         client = client->next;

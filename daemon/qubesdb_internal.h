@@ -11,6 +11,14 @@
 #include <pipe-server.h>
 #endif
 
+#include <assert.h>
+
+#define QUBES_FD_SET(a, b) do { \
+    int x = (a); \
+    assert((x >= 0 && x < (FD_SETSIZE))); \
+    FD_SET(x, (b)); \
+} while (0)
+
 #ifndef WIN32
 typedef int client_socket_t;
 #define INVALID_CLIENT_SOCKET -1
