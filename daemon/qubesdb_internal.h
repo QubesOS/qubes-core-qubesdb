@@ -4,11 +4,11 @@
 
 #include <libvchan.h>
 
-#ifndef WIN32
 #include "buffer.h"
-#else
+#ifdef WIN32
 #include <log.h>
 #include <pipe-server.h>
+#include <qubesdb.h>
 #endif
 
 #include <assert.h>
@@ -81,12 +81,11 @@ struct db_daemon_data {
     int remote_connected;       /* if remote daemon connected and ready for
                                  * processing requests (i.e. have
                                  * synchronised database */
-    struct buffer *vchan_buffer;/* vchan write buffer */
-    struct qdb_hdr vchan_pending_hdr; /* retrieved header but data not yet handled */
 #ifdef WIN32
     PIPE_SERVER pipe_server;
     SECURITY_ATTRIBUTES sa;
     HANDLE service_stop_event;
+    SRWLOCK lock;
 #else
     int socket_fd;              /* local server socket */
     struct client *client_list; /* local clients */
@@ -97,6 +96,8 @@ struct db_daemon_data {
     struct qubesdb *db;         /* database */
     int multiread_requested;    /* have requested multiread, if not - drop such
                                    responses */
+    struct buffer *vchan_buffer;/* vchan write buffer */
+    struct qdb_hdr vchan_pending_hdr; /* retrieved header but data not yet handled */
 };
 
 struct qubesdb *qubesdb_init(send_watch_notify_t);

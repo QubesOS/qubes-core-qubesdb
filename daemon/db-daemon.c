@@ -9,11 +9,10 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
-#include "buffer.h"
 #else
 #include <windows.h>
 #include <sddl.h>
-#include <Lmcons.h>
+#include <lmcons.h>
 #include <strsafe.h>
 
 #include <log.h>
@@ -35,6 +34,7 @@ struct thread_param {
 };
 #endif
 
+#include "buffer.h"
 #include <qubesdb.h>
 #include "qubesdb_internal.h"
 
@@ -155,17 +155,20 @@ int mainloop(struct db_daemon_data *d) {
         d->multiread_requested = 1;
         /* wait for complete response */
         while (d->multiread_requested) {
+            AcquireSRWLockExclusive(&d->lock);
             if (!handle_vchan_data(d)) {
                 LogError("FATAL: vchan error");
+                ReleaseSRWLockExclusive(&d->lock);
                 return 0;
             }
+            ReleaseSRWLockExclusive(&d->lock);
         }
     }
 
     // Create the thread that will handle client pipes
     pipe_thread = CreateThread(NULL, 0, pipe_thread_main, d->pipe_server, 0, NULL);
     if (!pipe_thread) {
-        perror("CreateThread(main pipe thread)");
+        win_perror("CreateThread(main pipe thread)");
         return 0;
     }
 
@@ -186,14 +189,14 @@ int mainloop(struct db_daemon_data *d) {
         case 0: {
             // pipe thread terminated, abort
             GetExitCodeThread(pipe_thread, &status);
-            perror2(status, "pipe thread");
+            win_perror2(status, "pipe thread");
             return 0;
         }
 
         case 1: {
             // service stopped
             LogInfo("service stopped, exiting");
-            return 1;
+            goto cleanup;
         }
 
         case 2: {
@@ -227,10 +230,13 @@ int mainloop(struct db_daemon_data *d) {
 
             if (d->remote_connected || libvchan_is_open(d->vchan)) {
                 while (libvchan_data_ready(d->vchan)) {
+                    AcquireSRWLockExclusive(&d->lock);
                     if (!handle_vchan_data(d)) {
                         fprintf(stderr, "FATAL: vchan data processing failed\n");
+                        ReleaseSRWLockExclusive(&d->lock);
                         return 0;
                     }
+                    ReleaseSRWLockExclusive(&d->lock);
                 }
             }
             break;
@@ -238,11 +244,26 @@ int mainloop(struct db_daemon_data *d) {
 
         default: {
             // wait failed
-            perror("WaitForMultipleObjects");
+            win_perror("WaitForMultipleObjects");
             return 0;
         }
         }
     }
+
+cleanup:
+    if (WaitForSingleObject(pipe_thread, 1000) != WAIT_OBJECT_0)
+    {
+        TerminateThread(pipe_thread, 0);
+        CloseHandle(pipe_thread);
+    }
+    QpsDestroy(d->pipe_server);
+    d->pipe_server = NULL;
+    if (d->vchan)
+    {
+        libvchan_close(d->vchan);
+        d->vchan = NULL;
+    }
+
     return 1;
 }
 
@@ -258,20 +279,27 @@ DWORD WINAPI pipe_thread_client(PVOID param) {
         // blocking read
         status = QpsRead(p->daemon->pipe_server, p->id, &hdr, sizeof(hdr));
         if (ERROR_SUCCESS != status) {
-            perror("QpsRead");
-            LogWarning("read from client %lu failed", p->id);
+            LogWarning("QpsRead from client %lu failed: %d", p->id, (int)status);
+            AcquireSRWLockExclusive(&p->daemon->lock);
+            handle_client_disconnect(p->daemon, &c);
             QpsDisconnectClient(p->daemon->pipe_server, p->id);
+            ReleaseSRWLockExclusive(&p->daemon->lock);
             free(param);
             return status;
         }
 
+        AcquireSRWLockExclusive(&p->daemon->lock);
         if (!handle_client_data(p->daemon, &c, (char*)&hdr, sizeof(hdr))) {
             LogWarning("handle_client_data failed, disconnecting client %lu", p->id);
+            handle_client_disconnect(p->daemon, &c);
             QpsDisconnectClient(p->daemon->pipe_server, p->id);
+            ReleaseSRWLockExclusive(&p->daemon->lock);
             free(param);
             return 1;
         }
+        ReleaseSRWLockExclusive(&p->daemon->lock);
     }
+    return 0;
 }
 
 void client_connected_callback(PIPE_SERVER server, LONGLONG id, PVOID context) {
@@ -289,7 +317,7 @@ void client_connected_callback(PIPE_SERVER server, LONGLONG id, PVOID context) {
     param->daemon = context;
     client_thread = CreateThread(NULL, 0, pipe_thread_client, param, 0, NULL);
     if (!client_thread) {
-        perror("CreateThread");
+        win_perror("CreateThread");
         free(param);
         return;
     }
@@ -315,7 +343,7 @@ int init_server_socket(struct db_daemon_data *d) {
         SDDL_REVISION_1,
         &sd,
         NULL)) {
-        perror("ConvertStringSecurityDescriptorToSecurityDescriptor");
+        win_perror("ConvertStringSecurityDescriptorToSecurityDescriptor");
         return 0;
     }
 
@@ -339,7 +367,8 @@ int init_server_socket(struct db_daemon_data *d) {
 }
 
 void close_server_socket(struct db_daemon_data *d) {
-    QpsDestroy(d->pipe_server);
+    if (d->pipe_server)
+        QpsDestroy(d->pipe_server);
     d->pipe_server = NULL;
 }
 #endif // WIN32
@@ -689,7 +718,11 @@ int fuzz_main(int argc, char **argv) {
         exit(1);
     }
 
+#ifndef WIN32
     memset(&d, 0, sizeof(d));
+#else
+    RtlSecureZeroMemory(&d, sizeof(d));
+#endif
 
     d.remote_domid = atoi(argv[1]);
     if (argc >= 3 && strlen(argv[2]) > 0)
@@ -757,6 +790,7 @@ int fuzz_main(int argc, char **argv) {
 #else
     libvchan_register_logger(vchan_logger);
     d.db = qubesdb_init(send_watch_notify);
+    InitializeSRWLock(&d.lock);
 #endif
     if (!d.db) {
         fprintf(stderr, "FATAL: database initialization failed\n");
@@ -822,9 +856,6 @@ int fuzz_main(int argc, char **argv) {
 
     ret = !mainloop(&d);
 #endif /* !WIN32 */
-
-    if (d.vchan)
-        libvchan_close(d.vchan);
 
     close_server_socket(&d);
 
