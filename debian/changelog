@@ -1,3 +1,50 @@
+qubesdb (4.1.13-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Add assertions to detect FD_SET overflow
+
+  [ Marek Marczykowski-Górecki ]
+  * Make the code compile with MinGW
+  * Add Makefile for MinGW build
+  * windows: rename perror to win_perror
+
+  [ Ivan Kardykov ]
+  * fix win32 compilation
+
+  [ Mikhail Lukashov ]
+  * windows: build fixups to VS2019
+  * windows: improve logging
+  * windows: remove duplicated error logging
+
+  [ Ivan Kardykov ]
+  * windows: fix incompartible unicode with MinGW
+
+  [ Mikhail Lukashov ]
+  * windows: fix qubesdb-daemon cleanup on shutdown
+
+  [ Marek Marczykowski-Górecki ]
+  * windows: add missing handle_client_disconnect call
+  * windows: add locking
+
+  [ Demi Marie Obenour ]
+  * Fix build with -Werror=missing-prototypes
+  * Add a comma after enum variant
+  * Allow removing a value after reading it
+  * Exit non-zero on I/O errors
+  * Fix error checking and a memory leak
+  * Add documentation for -h
+  * Forbid leading dashes in qubesdb entry names
+  * Move newline printing to common code
+  * Fix an unchecked malloc
+  * Securely zero buffer memory before freeing it
+  * Daemon: Zeroize memory before freeing it
+  * Better error checking when writing to stdout
+  * Write error messages if fflush() fails
+  * Reserve ENOENT for "no such path in QubesDB"
+  * CLI tools: distinguish "no such entry" and "error"
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 05 Mar 2022 11:46:44 +0100
+
 qubesdb (4.1.12-1) unstable; urgency=medium
 
   [ Frédéric Pierret (fepitre) ]
