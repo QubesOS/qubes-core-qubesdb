@@ -22,6 +22,7 @@
 #pragma once
 #ifndef _BUFFER_H
 #define _BUFFER_H
+#include <string.h>
 
 struct buffer {
     char *buffer;
@@ -45,7 +46,9 @@ void buffer_substract(struct buffer *b, int count);
 #endif
 
 static inline void buffer_secure_zero(void *buf, size_t size) {
-#ifdef _WIN32
+#if defined FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
+    memset(buf, 0, size);
+#elif defined _WIN32
     SecureZeroMemory(buf, size);
 #else
     explicit_bzero(buf, size);
