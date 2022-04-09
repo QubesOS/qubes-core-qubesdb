@@ -23,6 +23,10 @@
 #ifndef _BUFFER_H
 #define _BUFFER_H
 #include <string.h>
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN 1
+#include <windows.h>
+#endif
 
 struct buffer {
     char *buffer;
@@ -40,10 +44,6 @@ int buffer_datacount(struct buffer *b);
 char *buffer_data(struct buffer *b);
 void buffer_substract(struct buffer *b, int count);
 
-#ifdef _WIN32
-#define WIN32_LEAN_AND_MEAN 1
-#include <Winbase.h>
-#endif
 
 static inline void buffer_secure_zero(void *buf, size_t size) {
 #if defined FUZZING_BUILD_MODE_UNSAFE_FOR_PRODUCTION
