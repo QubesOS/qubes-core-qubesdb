@@ -1,0 +1,16 @@
+host:
+  rpm:
+    spec:
+    - rpm_spec/qubes-db.spec
+    - rpm_spec/qubes-db-dom0.spec
+vm:
+  rpm:
+    spec:
+    - rpm_spec/qubes-db.spec
+    - rpm_spec/qubes-db-vm.spec
+  deb:
+    build:
+    - debian
+  archlinux:
+    build:
+    - archlinux
