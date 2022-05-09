@@ -1,11 +1,11 @@
 host:
   rpm:
-    spec:
+    build:
     - rpm_spec/qubes-db.spec
     - rpm_spec/qubes-db-dom0.spec
 vm:
   rpm:
-    spec:
+    build:
     - rpm_spec/qubes-db.spec
     - rpm_spec/qubes-db-vm.spec
   deb:
