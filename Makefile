@@ -4,7 +4,7 @@ VERSION = $(file <version)
 help:
 	@echo "make all                   -- compile all binaries"
 	@echo "make rpms-vm               -- generate binary rpm packages for VM"
-	@echo "make rpms-dom0               -- generate binary rpm packages for Dom0"
+	@echo "make rpms-dom0             -- generate binary rpm packages for Dom0"
 
 rpms-dom0:
 	PACKAGE_SET=dom0 rpmbuild --define "_rpmdir $(RPMS_DIR)" -bb rpm_spec/qubes-db.spec
