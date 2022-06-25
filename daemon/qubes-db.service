@@ -4,11 +4,12 @@ After=systemd-modules-load.service fedora-loadmodules.service
 DefaultDependencies=no
 
 [Service]
-ExecStartPre=/bin/mkdir -pZ /var/run/qubes
+ExecStartPre=/bin/mkdir -pZ -m 0775 /run/qubes
+ExecStartPre=/bin/chcon -t qubes_var_run_t /run/qubes
 # Remote Dom ID as an argument
 ExecStart=/usr/sbin/qubesdb-daemon 0
 Type=notify
-StandardOutput=syslog
+Group=qubes
 
 [Install]
 WantedBy=sysinit.target

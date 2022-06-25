@@ -519,6 +519,10 @@ static int init_server_socket(struct db_daemon_data *d) {
     struct stat stat_buf;
     mode_t old_umask;
 
+    if (mkdir("/var/run/qubes", 0775) && errno != EEXIST) {
+        perror("mkdir /var/run/qubes");
+        return 0;
+    }
     if (d->remote_name) {
         snprintf(socket_address, MAX_FILE_PATH,
                 QDB_DAEMON_PATH_PATTERN, d->remote_name);
