@@ -49,6 +49,7 @@ Requires: (%{name}-selinux if selinux-policy)
 BuildRequires: selinux-policy
 BuildRequires: selinux-policy-devel
 %{?selinux_requires}
+Requires: qubes-core-agent-selinux
 
 Summary: SELinux policies for qubesdb
 License: GPLv2+
