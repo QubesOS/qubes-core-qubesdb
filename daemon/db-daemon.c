@@ -511,52 +511,56 @@ static int mainloop(struct db_daemon_data *d) {
     return 1;
 }
 
-#define MAX_FILE_PATH 256
 static int init_server_socket(struct db_daemon_data *d) {
-    char socket_address[MAX_FILE_PATH];
     struct sockaddr_un sockname;
     int s;
     struct stat stat_buf;
     mode_t old_umask;
 
+    memset(&sockname, 0, sizeof(sockname));
+    sockname.sun_family = AF_UNIX;
     if (mkdir("/var/run/qubes", 0775) && errno != EEXIST) {
         perror("mkdir /var/run/qubes");
         return 0;
     }
     if (d->remote_name) {
-        snprintf(socket_address, MAX_FILE_PATH,
-                QDB_DAEMON_PATH_PATTERN, d->remote_name);
+        if ((unsigned)snprintf(sockname.sun_path, sizeof sockname.sun_path,
+                               QDB_DAEMON_PATH_PATTERN, d->remote_name) >=
+            sizeof sockname.sun_path) {
+            perror("snprintf()");
+            return 0;
+        }
         if (d->remote_domid == 0) {
             /* the same daemon as both VM and Admin parts */
             unlink(QDB_DAEMON_LOCAL_PATH);
-            if (symlink(socket_address, QDB_DAEMON_LOCAL_PATH) < 0) {
+            if (symlink(sockname.sun_path, QDB_DAEMON_LOCAL_PATH) < 0) {
                 perror("symlink " QDB_DAEMON_LOCAL_PATH);
                 return 0;
             }
         }
     } else {
-        snprintf(socket_address, MAX_FILE_PATH,
-                QDB_DAEMON_LOCAL_PATH);
+        _Static_assert(sizeof QDB_DAEMON_LOCAL_PATH <= sizeof sockname.sun_path,
+                       QDB_DAEMON_LOCAL_PATH "too long");
+        strcpy(sockname.sun_path, QDB_DAEMON_LOCAL_PATH);
     }
 
-    unlink(socket_address);
+    if (unlink(sockname.sun_path) && errno != ENOENT) {
+        perror("unlink() failed");
+        return 0;
+    }
 
     /* make socket available for anyone */
     old_umask = umask(0);
 
     s = socket(AF_UNIX, SOCK_STREAM, 0);
-    memset(&sockname, 0, sizeof(sockname));
-    sockname.sun_family = AF_UNIX;
-    memcpy(sockname.sun_path, socket_address, strlen(socket_address));
-
     if (bind(s, (struct sockaddr *) &sockname, sizeof(sockname)) == -1) {
-        printf("bind() failed\n");
+        perror("bind() failed");
         close(s);
         return 0;
     }
 //      chmod(sockname.sun_path, 0666);
     if (listen(s, SERVER_SOCKET_BACKLOG) == -1) {
-        perror("listen() failed\n");
+        perror("listen() failed");
         close(s);
         return 0;
     }
@@ -758,7 +762,7 @@ int fuzz_main(int argc, char **argv) {
                 exit(1);
             case 0:
                 close(ready_pipe[0]);
-                snprintf(log_path, sizeof(log_path), "/var/log/qubes/qubesdb.%s.log", d.remote_name);
+                snprintf(log_path, sizeof(log_path), "/var/log/qubes/qubesdb.%s.log", d.remote_name ? d.remote_name : "dom0");
 
                 close(0);
                 old_umask = umask(0);
