@@ -18,9 +18,9 @@ optional {
 	}
 	files_pid_file(qubes_var_run_t)
 	type_transition qubes_qubesdb_daemon_t var_run_t:dir qubes_var_run_t "qubes";
-	type_transition qubes_qubesdb_daemon_t { qubes_var_run_t var_run_t }:sock_file qubes_qubesdb_socket_t "qubesdb.sock";
-	allow qubes_qubesdb_daemon_t { qubes_var_run_t var_run_t }:dir { add_name remove_name search write };
-	allow qubes_qubesdb_daemon_t qubes_var_run_t:dir create;
+	type_transition qubes_qubesdb_daemon_t qubes_var_run_t:sock_file qubes_qubesdb_socket_t "qubesdb.sock";
+	allow qubes_qubesdb_daemon_t var_run_t:dir { add_name search };
+	allow qubes_qubesdb_daemon_t qubes_var_run_t:dir { create add_name remove_name search write };
 }
 
 ipp_qubesdb_talk(xdm_t)
