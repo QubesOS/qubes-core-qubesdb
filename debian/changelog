@@ -1,3 +1,19 @@
+qubesdb (4.1.14-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Fix OSS Fuzz integration
+
+  [ Marek Marczykowski-Górecki ]
+  * ci: build on windows too
+  * Fix mingw build
+
+  [ Frédéric Pierret (fepitre) ]
+  * Drop Travis CI
+  * Add Qubes Builder v2 integration
+  * .qubesbuilder: replace 'spec' by 'build'
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 11 Oct 2022 17:43:09 +0200
+
 qubesdb (4.1.13-1) unstable; urgency=medium
 
   [ Demi Marie Obenour ]
