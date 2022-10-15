@@ -17,13 +17,10 @@ KEY="$1"
 DEFAULT="${2:-2}"
 
 result=$(qubesdb-read "$KEY" 2>/dev/null)
+status=$?
 
-if test $? -ne 0
-then
-    if test $? -eq 2; then exit "$DEFAULT"; else exit 3; fi
-elif test -z "$result"
-then
-    exit 1
-else
-    exit 0
-fi
+case $status in
+(0) if test -n "$result"; then exit 0; else exit 1; fi;;
+(2) exit "$DEFAULT";;
+(*) exit 3;;
+esac
