@@ -1,3 +1,4 @@
+#define _GNU_SOURCE 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -9,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <signal.h>
+#include <poll.h>
 #else
 #include <windows.h>
 #include <sddl.h>
@@ -375,46 +377,43 @@ void close_server_socket(struct db_daemon_data *d) {
 
 #ifndef WIN32
 
-static int fill_fdsets_for_select(struct db_daemon_data *d,
-        fd_set * read_fdset, fd_set * write_fdset) {
+static size_t fill_fdsets_for_select(struct db_daemon_data *d,
+        struct pollfd fds[static MAX_CLIENTS + 2]) {
     struct client *client;
-    int max_fd;
+    size_t total_fds = 2;
 
-    FD_ZERO(read_fdset);
-    FD_ZERO(write_fdset);
-    QUBES_FD_SET(d->socket_fd, read_fdset);
-    max_fd = d->socket_fd;
-    if (d->vchan) {
-        int vchan_fd = libvchan_fd_for_select(d->vchan);
-        QUBES_FD_SET(vchan_fd, read_fdset);
-        if (vchan_fd > max_fd)
-            max_fd = vchan_fd;
-    }
+    fds[0] = (struct pollfd) {
+        .fd = d->socket_fd,
+        .events = POLLIN | POLLHUP,
+        .revents = 0,
+    };
+    fds[1] = (struct pollfd) {
+        .fd = d->vchan ? libvchan_fd_for_select(d->vchan) : -1,
+        .events = POLLIN | POLLHUP,
+        .revents = 0,
+    };
 
     client = d->client_list;
     while (client) {
+        assert(total_fds < MAX_CLIENTS + 2);
         /* Do not read commands from client, which have some buffered data,
          * first try to send them all. If client do not handle write buffering
          * properly, it can cause a deadlock there, but at least qubesdb-daemon
          * will still handle other requests */
-        assert(client->fd < FD_SETSIZE);
-        if (buffer_datacount(client->write_queue))
-            QUBES_FD_SET(client->fd, write_fdset);
-        else
-            QUBES_FD_SET(client->fd, read_fdset);
-        if (client->fd > max_fd)
-            max_fd = client->fd;
+        fds[total_fds++] = (struct pollfd) {
+            .fd = client->fd,
+            .events = buffer_datacount(client->write_queue) ? POLLOUT : POLLIN | POLLHUP,
+            .revents = 0,
+        };
         client = client->next;
     }
-    return max_fd;
+    return total_fds;
 }
 
 static int mainloop(struct db_daemon_data *d) {
-    fd_set read_fdset;
-    fd_set write_fdset;
     struct client *client;
-    int max_fd;
     int ret;
+    static struct pollfd fds[MAX_CLIENTS + 2];
     sigset_t sigterm_mask;
     sigset_t oldmask;
     struct timespec ts = { 10, 0 };
@@ -423,7 +422,10 @@ static int mainloop(struct db_daemon_data *d) {
     sigaddset(&sigterm_mask, SIGTERM);
 
     while (1) {
-        max_fd = fill_fdsets_for_select(d, &read_fdset, &write_fdset);
+        size_t current_fd = 2;
+        size_t const nfds = fill_fdsets_for_select(d, fds);
+        assert(nfds >= 2);
+        assert(nfds <= MAX_CLIENTS + 2);
 
         if (sigprocmask(SIG_BLOCK, &sigterm_mask, &oldmask) < 0) {
             perror("sigprocmask");
@@ -433,23 +435,18 @@ static int mainloop(struct db_daemon_data *d) {
             fprintf(stderr, "terminating\n");
             break;
         }
-        ret = pselect(max_fd+1, &read_fdset, &write_fdset, NULL, &ts, &oldmask);
+        ret = ppoll(fds, nfds, &ts, &oldmask);
         if (ret < 0) {
             if (errno == EINTR)
                 continue;
-            /* client could have disconnected just before select call, so
-             * ignore this error and retry
-             * FIXME: This probably will loop indefinitelly */
-            if (errno == EBADF)
-                continue;
-            perror("select");
+            perror("ppoll");
             break;
         }
         /* restore signal mask */
         sigprocmask(SIG_SETMASK, &oldmask, NULL);
 
         if (d->vchan) {
-            if (FD_ISSET(libvchan_fd_for_select(d->vchan), &read_fdset))
+            if (fds[1].revents)
                 libvchan_wait(d->vchan);
             if (!libvchan_is_open(d->vchan)) {
                 fprintf(stderr, "vchan closed\n");
@@ -489,11 +486,13 @@ static int mainloop(struct db_daemon_data *d) {
 
         client = d->client_list;
         while (client) {
-            if (FD_ISSET(client->fd, &write_fdset)) {
+            assert(current_fd < MAX_CLIENTS + 2);
+            short revents = fds[current_fd++].revents;
+            if (revents & POLLOUT) {
                 /* just send bufferred data, possibly not all of them */
                 write_client_buffered(client, NULL, 0);
             }
-            if (FD_ISSET(client->fd, &read_fdset)) {
+            if (revents & (POLLIN | POLLHUP)) {
                 if (!handle_client_data(d, client, NULL, 0)) {
                     struct client *client_to_remove = client;
                     client = client->next;
@@ -503,8 +502,9 @@ static int mainloop(struct db_daemon_data *d) {
             }
             client = client->next;
         }
+        assert(current_fd == nfds);
 
-        if (FD_ISSET(d->socket_fd, &read_fdset)) {
+        if (fds[0].revents) {
             accept_new_client(d);
         }
     }

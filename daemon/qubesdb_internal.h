@@ -13,12 +13,6 @@
 
 #include <assert.h>
 
-#define QUBES_FD_SET(a, b) do { \
-    int x = (a); \
-    assert((x >= 0 && x < (FD_SETSIZE))); \
-    FD_SET(x, (b)); \
-} while (0)
-
 #ifndef WIN32
 typedef int client_socket_t;
 #define INVALID_CLIENT_SOCKET -1
@@ -31,6 +25,7 @@ typedef int client_socket_t;
 #define QUBESDB_VCHAN_PORT 111
 
 #define MAX_FILE_PATH 256
+#define MAX_CLIENTS 256
 
 struct client;
 
