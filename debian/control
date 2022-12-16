@@ -8,7 +8,7 @@ Build-Depends:
  libsystemd-dev,
  python3-all,
  python3-all-dev,
- python-setuptools,
+ python3-setuptools,
  quilt,
  libvchan-xen-dev,
  pkg-config
