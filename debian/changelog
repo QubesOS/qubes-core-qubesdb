@@ -1,3 +1,13 @@
+qubesdb (4.1.15-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Fix qubesdb-read-bool on missing keys
+
+  [ Marek Marczykowski-Górecki ]
+  * debian: remove remaining python2 dep
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sat, 17 Dec 2022 18:19:55 +0100
+
 qubesdb (4.1.14-1) unstable; urgency=medium
 
   [ Demi Marie Obenour ]
