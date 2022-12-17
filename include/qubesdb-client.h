@@ -61,7 +61,7 @@ void qdb_close(qdb_handle_t h);
 /** Read single value from QubesDB
  * @param h Connection handle
  * @param path Path to read
- * @param value_len[out] Size of returned data (optional)
+ * @param[out] value_len Size of returned data (optional)
  * @return Key contents (NULL terminated) or NULL on failure. Value must be freed with free().
  */
 QUBESDBCLIENT_API
@@ -70,7 +70,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len);
 /** Get path list matching given prefix
  * @param h Connection handle
  * @param path Path prefix to match
- * @param list_len[out] Length of returned list (optional)
+ * @param[out] list_len Length of returned list (optional)
  * @return NULL terminated list of NULL terminated strings with list of paths.
  *         Values must be freed with free().
  */
@@ -80,8 +80,8 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len);
 /** Get path list matching given prefixB
  * @param h Connection handle
  * @param path Path prefix to match
- * @param values_len[out] List of lengths of returned data (without terminating NULL)
- * @param list_len[out] Count of returned valued without terminating NULL,NULL (optional)
+ * @param[out] values_len List of lengths of returned data (without terminating NULL)
+ * @param[out] list_len Count of returned valued without terminating NULL,NULL (optional)
  * @return List of paths and data. So list length is 2*list_len and have [path,
  *         value, path, value, ...]. The whole list is terminated with two NULLs.
  * All returned data must be freed with free().
