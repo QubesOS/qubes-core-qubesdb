@@ -1,3 +1,18 @@
+qubesdb (4.2.0-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Fix some Doxygen comments
+  * Do not use select(2)
+  * Implement SELinux policy for QubesDB
+  * Try to get qubesdb working with SELinux enforcing
+  * Simplify daemon startup and fix UB
+  * SELinux policies require qubes-core-agent-selinux
+  * Simplify SELinux policy
+  * Avoid explicit mkdir
+  * Add write permission to qubesdb-daemon on var_run_t
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Thu, 29 Dec 2022 08:55:38 +0100
+
 qubesdb (4.1.15-1) unstable; urgency=medium
 
   [ Demi Marie Obenour ]
