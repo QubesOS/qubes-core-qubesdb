@@ -18,7 +18,7 @@ Homepage: http://www.qubes-os.org
 Package: qubesdb
 Section: admin
 Architecture: amd64
-Depends: libqubesdb, libvchan-xen, ${shlibs:Depends}, ${misc:Depends}
+Depends: libqubesdb, ${shlibs:Depends}, ${misc:Depends}
 Description: QubesDB management tools and daemon.
 
 Package: qubesdb-vm
