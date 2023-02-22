@@ -20,6 +20,7 @@ install: all
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-multiread
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-list
 	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-watch
+	ln -s qubesdb-cmd $(DESTDIR)$(BINDIR)/qubesdb-exists
 	install qubesdb-read-bool $(DESTDIR)$(BINDIR)/
 
 .PHONY: libqubesdb

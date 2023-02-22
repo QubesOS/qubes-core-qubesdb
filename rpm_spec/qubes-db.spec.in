@@ -90,6 +90,7 @@ make install \
 %{_bindir}/qubesdb-multiread
 %{_bindir}/qubesdb-list
 %{_bindir}/qubesdb-watch
+%{_bindir}/qubesdb-exists
 %{_sbindir}/qubesdb-daemon
 
 %files libs

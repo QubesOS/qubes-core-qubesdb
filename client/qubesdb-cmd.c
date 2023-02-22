@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <stdbool.h>
 #ifdef WIN32
 #include <windows.h>
 #include <getopt.h>
@@ -25,6 +26,7 @@ enum {
     DO_MULTIREAD,
     DO_LIST,
     DO_WATCH,
+    DO_EXISTS,
 } qdb_cmd;
 
 static int encode_and_print_value(char *val) {
@@ -104,6 +106,26 @@ static int cmd_read(qdb_handle_t h, int argc, char **args) {
         return 2;
     return anything_failed;
 }
+
+static int cmd_exists(qdb_handle_t h, int argc, char **args) {
+    bool anything_failed = false;
+
+    for (int i=0; i < argc && !anything_failed; i++) {
+        char *value = qdb_read(h, args[i], NULL);
+        if (value) {
+            anything_failed = fwrite("true\n", 1, 5, stdout) != 5;
+            free(value);
+        } else if (errno == ENOENT) {
+            anything_failed = fwrite("false\n", 1, 6, stdout) != 6;
+        } else {
+            perror("qdb_read()");
+            anything_failed = true;
+        }
+    }
+
+    return anything_failed;
+}
+
 
 static int cmd_multiread(qdb_handle_t h, int argc, char **args) {
     int i, j;
@@ -238,6 +260,8 @@ static int parse_cmd(char *cmd_str) {
         return DO_LIST;
     else if (!strcmp(cmd_str, "watch"))
         return DO_WATCH;
+    else if (!strcmp(cmd_str, "exists"))
+        return DO_EXISTS;
     else
         return 0;
 }
@@ -261,6 +285,8 @@ static void usage(char *argv0) {
     fprintf(stderr, "  rm path [path...] - remove value(s)\n");
     fprintf(stderr, "  multiread path [path...] - read all entries matching given path\n");
     fprintf(stderr, "  list path - list paths mathing given argument\n");
+    fprintf(stderr, "  exists path - check if path exists, and print \"true\" or "
+            "\"false\" accordingly\n");
     fprintf(stderr, "  watch [-n N] path [path...] - watch given path(s) for "
             "modifications\n");
     fprintf(stderr, "    if -n given you can specify how many events should "
@@ -361,6 +387,9 @@ int main(int argc, char **argv) {
             break;
         case DO_WATCH:
             ret = cmd_watch(h, argc-optind, argv+optind);
+            break;
+        case DO_EXISTS:
+            ret = cmd_exists(h, argc-optind, argv+optind);
             break;
         default:
             if (!opt_quiet)
