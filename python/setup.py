@@ -1,5 +1,5 @@
 
-from distutils.core import setup, Extension
+from setuptools import setup, Extension
 
 extra_compile_args  = [ "-fno-strict-aliasing", "-Werror" ]
 
