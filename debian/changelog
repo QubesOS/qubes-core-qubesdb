@@ -1,3 +1,16 @@
+qubesdb (4.2.2-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Stop testing on R4.1
+
+  [ Marek Marczykowski-Górecki ]
+  * python: migrate away from deprecated distutils
+
+  [ Demi Marie Obenour ]
+  * Support providing a default value to qubesdb-read
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 16 Apr 2023 02:38:35 +0200
+
 qubesdb (4.2.1-1) unstable; urgency=medium
 
   * rpm,debian: remove explicit dependency on vchan
