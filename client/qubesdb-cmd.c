@@ -4,10 +4,10 @@
 #include <errno.h>
 #ifdef WIN32
 #include <windows.h>
-#include <getopt.h>
 #else
 #include <unistd.h>
 #endif
+#include <getopt.h>
 
 #include <qubesdb-client.h>
 
@@ -64,16 +64,25 @@ static int encode_and_print_value(char *val) {
     return 0;
 }
 
-static int cmd_read(qdb_handle_t h, int argc, char **args) {
+static int cmd_read(qdb_handle_t h, int argc, char **args, char *default_value) {
     int i;
     char *value, *path;
     int anything_failed = 0, is_enoent = 0;
 
+    if (default_value != NULL && argc != 1) {
+        fprintf(stderr, "--default only valid with exactly 1 path to read\n");
+        exit(1);
+    }
     for (i=0; i < argc; i++) {
         value = qdb_read(h, args[i], NULL);
-        if (!opt_wait)
-            is_enoent = !value && errno == ENOENT;
-        else if (!value) {
+        if (!opt_wait) {
+            if (!value && errno == ENOENT) {
+                if (default_value)
+                    value = default_value;
+                else
+                    is_enoent = 1;
+            }
+        } else if (!value) {
             anything_failed |= qdb_watch(h, args[i]) != 1;
             while (!(value = qdb_read(h, args[i], NULL))) {
                 if ((path = qdb_read_watch(h))) {
@@ -253,6 +262,7 @@ static void usage(char *argv0) {
     fprintf(stderr, "  -d <domain> - specify destination domain, available only in dom0\n");
     fprintf(stderr, "  -w - wait for any value (possibly empty)\n");
     fprintf(stderr, "  -x - remove the value after reading it (affects reading commands)\n");
+    fprintf(stderr, "  -e, --default <default> - use <default> if the value does not exist\n");
     fprintf(stderr, "  -h - print this message\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Available commands:\n");
@@ -270,9 +280,11 @@ static void usage(char *argv0) {
 int main(int argc, char **argv) {
     char *cmd_argv0;
     char *dest_domain = NULL;
+    char *default_value = NULL;
     int do_cmd = 0;
     int ret;
     int opt;
+    int last_optind;
     qdb_handle_t h;
 
     if ((cmd_argv0=strchr(argv[0], '-'))) {
@@ -281,13 +293,27 @@ int main(int argc, char **argv) {
     }
 
 #ifndef WIN32
-    while ((opt = getopt(argc, argv, "hxc:d:n:frqw")) != -1)
+    static const struct option options[] = {
+        {"default", required_argument, 0, 'e'},
+        {0, 0, 0, 0},
+    };
+    while ((void)(last_optind = optind),
+           (opt = getopt_long(argc, argv, "hxc:d:n:e:frqw", options, NULL)) != -1)
 #else
-    while ((opt = getopt(argc, argv, "hxc:d:n:frqw")) != 0)
+    while ((void)(last_optind = optind),
+           (opt = getopt(argc, argv, "hxc:d:n:e:frqw")) != 0)
 #endif
     {
         switch (opt) {
             case 'c':
+                if (last_optind != 1) {
+                    fprintf(stderr, "-c must be first argument\n");
+                    exit(1);
+                }
+                if (do_cmd) {
+                    fprintf(stderr, "-c only valid for qubesdb-cmd\n");
+                    exit(1);
+                }
                 do_cmd = parse_cmd(optarg);
                 /* handle invalid command later */
                 break;
@@ -308,6 +334,13 @@ int main(int argc, char **argv) {
                 break;
             case 'w':
                 opt_wait = 1;
+                break;
+            case 'e':
+                default_value = optarg;
+                if (do_cmd != DO_READ) {
+                    fprintf(stderr, "--default valid only for read command\n");
+                    exit(1);
+                }
                 break;
             case 'n':
                 opt_watch_count = atoi(optarg);
@@ -345,7 +378,7 @@ int main(int argc, char **argv) {
 #endif
     switch (do_cmd) {
         case DO_READ:
-            ret = cmd_read(h, argc-optind, argv+optind);
+            ret = cmd_read(h, argc-optind, argv+optind, default_value);
             break;
         case DO_WRITE:
             ret = cmd_write(h, argc-optind, argv+optind);
