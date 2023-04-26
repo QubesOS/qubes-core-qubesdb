@@ -1,3 +1,11 @@
+qubesdb (4.2.3-1) unstable; urgency=medium
+
+  [ Frédéric Pierret (fepitre) ]
+  * Rework archlinux packaging
+  * archlinux: add python-setuptools in depends
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Wed, 26 Apr 2023 12:57:33 +0200
+
 qubesdb (4.2.2-1) unstable; urgency=medium
 
   [ Demi Marie Obenour ]
