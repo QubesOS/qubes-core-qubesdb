@@ -11,6 +11,7 @@ depends=(
   bash
   glibc
   systemd-libs
+  python-setuptools
   qubes-libvchan
   # Block updating if there is a major python update as the python API will be in the wrong PYTHONPATH
   'python<3.11'
