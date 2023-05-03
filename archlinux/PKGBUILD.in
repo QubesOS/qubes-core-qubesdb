@@ -14,7 +14,7 @@ depends=(
   python-setuptools
   qubes-libvchan
   # Block updating if there is a major python update as the python API will be in the wrong PYTHONPATH
-  'python<3.11'
+  'python<3.12'
   )
 install=archlinux/PKGBUILD.install
 _pkgnvr="${pkgname}-${pkgver}-${pkgrel}"
