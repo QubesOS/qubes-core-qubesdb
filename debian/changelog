@@ -1,3 +1,23 @@
+qubesdb (4.1.17-1) unstable; urgency=medium
+
+  [ Demi Marie Obenour ]
+  * Fix some Doxygen comments
+
+  [ Marek Marczykowski-Górecki ]
+  * rpm,debian: remove explicit dependency on vchan
+  * python: migrate away from deprecated distutils
+
+  [ Frédéric Pierret (fepitre) ]
+  * archlinux: add python-setuptools in depends
+
+  [ Ludovic Bellier ]
+  * Update archlinux python version dependency to <3.12
+
+  [ Marek Marczykowski-Górecki ]
+  * ci: disable building with R4.2
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 05 May 2023 00:59:25 +0200
+
 qubesdb (4.1.16-1) unstable; urgency=medium
 
   * Rebuild with python 3.11
