@@ -1,3 +1,0 @@
-#define QTW_FILEDESCRIPTION_STR "QubesDB client library"
-
-#include "..\..\version_common.rc"

@@ -1,3 +1,0 @@
-#define QTW_FILEDESCRIPTION_STR "QubesDB daemon"
-
-#include "..\..\version_common.rc"

@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#ifndef WIN32
+#ifndef _WIN32
 #include <unistd.h>
 #else
 #define strdup _strdup
@@ -114,7 +114,7 @@ struct qubesdb_entry *qubesdb_insert(struct qubesdb *db, char *path) {
         new_entry = calloc(1,sizeof(*new_entry));
         if (!new_entry)
             return NULL;
-#ifndef WIN32
+#ifndef _WIN32
         strncpy(new_entry->path, path, QDB_MAX_PATH - 1);
 #else
         StringCbCopyA(new_entry->path, sizeof(new_entry->path), path);
@@ -199,7 +199,7 @@ int qubesdb_add_watch(struct qubesdb *db, char *path,
     db->watches = new_watch;
     new_watch->client = client;
     /* path already verified by caller */
-#ifndef WIN32
+#ifndef _WIN32
     strncpy(new_watch->path, path, QDB_MAX_PATH - 1);
 #else
     StringCbCopyA(new_watch->path, sizeof(new_watch->path), path);
@@ -250,7 +250,7 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
     while (watch) {
         if (strncmp(watch->path, path, watch->cmp_len) == 0) {
             hdr.type = QDB_RESP_WATCH;
-#ifndef WIN32
+#ifndef _WIN32
             strncpy(hdr.path, path, sizeof(hdr.path) - 1);
             hdr.path[sizeof(hdr.path) - 1] = '\0';
 #else
@@ -258,7 +258,7 @@ int qubesdb_fire_watches(struct qubesdb *db, char *path) {
 #endif
             hdr.data_len = 0;
 
-#ifndef WIN32
+#ifndef _WIN32
             if (db->send_watch_notify && db->send_watch_notify(watch->client, (char*)&hdr, sizeof(hdr)) < 0)
                 fprintf(stderr, "Failed to fire watch on %s for client " CLIENT_SOCKET_FORMAT "\n",
                         path, watch->client->fd);

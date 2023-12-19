@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #include <lmcons.h>
 #include <strsafe.h>
@@ -22,7 +22,7 @@
 
 /* type of value returned by read/write functions - on windows
  * ReadFile/WriteFile expects DWORD as bytes count */
-#ifdef WIN32
+#ifdef _WIN32
 typedef DWORD rw_ret_t;
 #define strdup _strdup
 #else
@@ -35,7 +35,7 @@ struct path_list {
 };
 
 struct qdb_handle {
-#ifdef WIN32
+#ifdef _WIN32
     HANDLE read_pipe;
     HANDLE write_pipe;
 #else
@@ -59,7 +59,7 @@ static void free_path_list(struct path_list *plist) {
     }
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 static int connect_to_daemon(struct qdb_handle *qh) {
     WCHAR pipe_name[MAX_FILE_NAME];
     ULONG status;
@@ -97,7 +97,7 @@ static int connect_to_daemon(struct qdb_handle *qh) {
     return 1;
 }
 
-#else /* !WIN32 */
+#else /* !_WIN32 */
 
 static int connect_to_daemon(struct qdb_handle *qh) {
     struct sockaddr_un remote;
@@ -130,7 +130,7 @@ error:
     return 0;
 }
 
-#endif /* !WIN32 */
+#endif /* !_WIN32 */
 
 /** Send message to daemon. If EPIPE encountered try to reconnect (perhaps
  * daemon has restarted, or closed connection after previous (invalid)
@@ -140,7 +140,7 @@ error:
  * @param data Command data (required only when hdr->data_len > 0)
  * @return 1 on success, 0 on failure
  */
-#ifdef WIN32
+#ifdef _WIN32
 static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr, void *data) {
     /* if commands needs additional data, the last parameter must not be NULL
      */
@@ -183,7 +183,7 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr, void *dat
     return 1;
 }
 
-#else /* !WIN32 */
+#else /* !_WIN32 */
 
 static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
         void *data) {
@@ -235,7 +235,7 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
     return 1;
 }
 
-#endif /* !WIN32 */
+#endif /* !_WIN32 */
 
 qdb_handle_t qdb_open(char *vmname) {
     struct qdb_handle *h;
@@ -258,7 +258,7 @@ qdb_handle_t qdb_open(char *vmname) {
     return h;
 
 error:
-#ifdef WIN32
+#ifdef _WIN32
     if (h->read_pipe != INVALID_HANDLE_VALUE)
         CloseHandle(h->read_pipe);
     if (h->write_pipe != INVALID_HANDLE_VALUE)
@@ -280,7 +280,7 @@ void qdb_close(qdb_handle_t h) {
         free(h->vmname);
     free_path_list(h->watch_list);
     if (h->connected) {
-#ifdef WIN32
+#ifdef _WIN32
         FlushFileBuffers(h->write_pipe);
         CloseHandle(h->write_pipe);
         CloseHandle(h->read_pipe);
@@ -299,7 +299,7 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
     struct path_list *w;
 
     do {
-#ifdef WIN32
+#ifdef _WIN32
         if (!ReadFile(h->read_pipe, hdr, sizeof(*hdr), &len, NULL))
             return 0;
 #else
@@ -308,7 +308,7 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
         if (len <= 0) {
             if (len == 0) {
                 h->connected = 0;
-#ifdef WIN32
+#ifdef _WIN32
                 CloseHandle(h->read_pipe);
                 h->read_pipe = INVALID_HANDLE_VALUE;
 #else
@@ -359,7 +359,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
 
     hdr.type = QDB_CMD_READ;
     /* already verified string length */
-#ifdef WIN32
+#ifdef _WIN32
     StringCbCopyA(hdr.path, sizeof(hdr.path), path);
 #else
     strcpy(hdr.path, path);
@@ -387,7 +387,7 @@ char *qdb_read(qdb_handle_t h, char *path, unsigned int *value_len) {
         goto fail;
     got_data = 0;
     while (got_data < hdr.data_len) {
-#ifdef WIN32
+#ifdef _WIN32
         ret = hdr.data_len - got_data; // this function always reads the requested size
         if (!QioReadBuffer(h->read_pipe, value+got_data, hdr.data_len-got_data)) {
 #else
@@ -426,7 +426,7 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
 
     hdr.type = QDB_CMD_LIST;
     /* already verified string length */
-#ifdef WIN32
+#ifdef _WIN32
     StringCbCopyA(hdr.path, sizeof(hdr.path), path);
 #else
     strcpy(hdr.path, path);
@@ -511,7 +511,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
 
     hdr.type = QDB_CMD_MULTIREAD;
     /* already verified string length */
-#ifdef WIN32
+#ifdef _WIN32
     StringCbCopyA(hdr.path, sizeof(hdr.path), path);
 #else
     strcpy(hdr.path, path);
@@ -556,7 +556,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
         }
         got_data = 0;
         while (got_data < hdr.data_len) {
-#ifdef WIN32
+#ifdef _WIN32
             read_ret = hdr.data_len - got_data; // this function always reads the requested size
             if (!QioReadBuffer(h->read_pipe, value+got_data, hdr.data_len-got_data)) {
 #else
@@ -632,7 +632,7 @@ int qdb_write(qdb_handle_t h, char *path, char *value, unsigned int value_len) {
 
     hdr.type = QDB_CMD_WRITE;
     /* already verified string length */
-#ifdef WIN32
+#ifdef _WIN32
     StringCbCopyA(hdr.path, sizeof(hdr.path), path);
 #else
     strcpy(hdr.path, path);
@@ -669,7 +669,7 @@ static int qdb__simple_cmd(qdb_handle_t h, char *path, int cmd) {
 
     hdr.type = cmd;
     /* already verified string length */
-#ifdef WIN32
+#ifdef _WIN32
     StringCbCopyA(hdr.path, sizeof(hdr.path), path);
 #else
     strcpy(hdr.path, path);
@@ -708,13 +708,13 @@ int qdb_rm(qdb_handle_t h, char *path) {
     return qdb__simple_cmd(h, path, QDB_CMD_RM);
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 HANDLE
 #else
 int
 #endif
 qdb_watch_fd(qdb_handle_t h) {
-#ifdef WIN32
+#ifdef _WIN32
     /* TODO: begin overlapped read operation and return event handle */
     /* TODO: for overlapped read, pipe should be opened in overlapped mode */
     return INVALID_HANDLE_VALUE;
@@ -747,7 +747,7 @@ char *qdb_read_watch(qdb_handle_t h) {
         ret = w->path;
         free(w);
     } else {
-#ifdef WIN32
+#ifdef _WIN32
         len = sizeof(hdr);
         if (!QioReadBuffer(h->read_pipe, &hdr, sizeof(hdr))) {
 #else
@@ -765,7 +765,7 @@ char *qdb_read_watch(qdb_handle_t h) {
     return ret;
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 void qdb_free(void *p) {
     free(p);
 }

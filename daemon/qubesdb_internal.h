@@ -5,7 +5,7 @@
 #include <libvchan.h>
 
 #include "buffer.h"
-#ifdef WIN32
+#ifdef _WIN32
 #include <log.h>
 #include <pipe-server.h>
 #include <qubesdb.h>
@@ -13,7 +13,7 @@
 
 #include <assert.h>
 
-#ifndef WIN32
+#ifndef _WIN32
 typedef int client_socket_t;
 #define INVALID_CLIENT_SOCKET -1
 #define SERVER_SOCKET_BACKLOG 5
@@ -29,7 +29,7 @@ typedef int client_socket_t;
 
 struct client;
 
-#ifndef WIN32
+#ifndef _WIN32
 typedef int (*send_watch_notify_t)(struct client *c, char *buf, size_t len);
 #else
 typedef int (*send_watch_notify_t)(struct client *c, char *buf, size_t len, PIPE_SERVER ps);
@@ -54,13 +54,13 @@ struct qubesdb {
     struct qubesdb_entry *entries;
     struct qubesdb_watch *watches;
     send_watch_notify_t send_watch_notify;
-#ifdef WIN32
+#ifdef _WIN32
     PIPE_SERVER pipe_server; // needed to communicate with clients
 #endif
 };
 
 struct client {
-#ifdef WIN32
+#ifdef _WIN32
     LONGLONG id;
 #else
     struct client *next;
@@ -76,7 +76,7 @@ struct db_daemon_data {
     int remote_connected;       /* if remote daemon connected and ready for
                                  * processing requests (i.e. have
                                  * synchronised database */
-#ifdef WIN32
+#ifdef _WIN32
     PIPE_SERVER pipe_server;
     SECURITY_ATTRIBUTES sa;
     HANDLE service_stop_event;
@@ -122,7 +122,7 @@ int handle_client_connect(struct db_daemon_data *d, struct client *client);
 int handle_client_disconnect(struct db_daemon_data *d, struct client *client);
 int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len);
-#ifndef WIN32
+#ifndef _WIN32
 int write_client_buffered(struct client *client, char *buf, size_t len);
 #else
 int send_watch_notify(struct client *c, char *buf, size_t len, PIPE_SERVER ps);

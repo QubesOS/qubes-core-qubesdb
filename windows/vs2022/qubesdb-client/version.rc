@@ -1,0 +1,4 @@
+#define QWT_FILEDESCRIPTION_STR "QubesDB client library"
+#define QWF_FILETYPE VFT_DLL
+
+#include "..\..\version_common.rc"
