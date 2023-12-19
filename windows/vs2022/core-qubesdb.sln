@@ -1,0 +1,43 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.6.33723.286
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "qubesdb-client", "qubesdb-client\qubesdb-client.vcxproj", "{E9DAF906-E07C-4A96-ADCF-611BCC624105}"
+	ProjectSection(ProjectDependencies) = postProject
+		{180009C7-1323-4ACF-A4D4-E746B6638A7E} = {180009C7-1323-4ACF-A4D4-E746B6638A7E}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "qubesdb-cmd", "qubesdb-cmd\qubesdb-cmd.vcxproj", "{23A8347F-28A3-4BCD-9D63-77B6A58D78B5}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E9DAF906-E07C-4A96-ADCF-611BCC624105} = {E9DAF906-E07C-4A96-ADCF-611BCC624105}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "qubesdb-daemon", "qubesdb-daemon\qubesdb-daemon.vcxproj", "{180009C7-1323-4ACF-A4D4-E746B6638A7E}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|x64 = Debug|x64
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E9DAF906-E07C-4A96-ADCF-611BCC624105}.Debug|x64.ActiveCfg = Debug|x64
+		{E9DAF906-E07C-4A96-ADCF-611BCC624105}.Debug|x64.Build.0 = Debug|x64
+		{E9DAF906-E07C-4A96-ADCF-611BCC624105}.Release|x64.ActiveCfg = Release|x64
+		{E9DAF906-E07C-4A96-ADCF-611BCC624105}.Release|x64.Build.0 = Release|x64
+		{23A8347F-28A3-4BCD-9D63-77B6A58D78B5}.Debug|x64.ActiveCfg = Debug|x64
+		{23A8347F-28A3-4BCD-9D63-77B6A58D78B5}.Debug|x64.Build.0 = Debug|x64
+		{23A8347F-28A3-4BCD-9D63-77B6A58D78B5}.Release|x64.ActiveCfg = Release|x64
+		{23A8347F-28A3-4BCD-9D63-77B6A58D78B5}.Release|x64.Build.0 = Release|x64
+		{180009C7-1323-4ACF-A4D4-E746B6638A7E}.Debug|x64.ActiveCfg = Debug|x64
+		{180009C7-1323-4ACF-A4D4-E746B6638A7E}.Debug|x64.Build.0 = Debug|x64
+		{180009C7-1323-4ACF-A4D4-E746B6638A7E}.Release|x64.ActiveCfg = Release|x64
+		{180009C7-1323-4ACF-A4D4-E746B6638A7E}.Release|x64.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {163BB4BE-2F45-4E06-930C-031D7BD60D89}
+	EndGlobalSection
+EndGlobal

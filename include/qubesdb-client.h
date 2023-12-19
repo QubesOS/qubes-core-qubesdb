@@ -1,7 +1,7 @@
 #ifndef _QUBESDB_CLIENT_H
 #define _QUBESDB_CLIENT_H
 
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 
 #ifdef QUBESDBCLIENT_EXPORTS
@@ -10,7 +10,7 @@
 #    define QUBESDBCLIENT_API __declspec(dllimport)
 #endif
 
-#else /* WIN32 */
+#else /* _WIN32 */
 #define QUBESDBCLIENT_API
 #endif
 
@@ -143,14 +143,14 @@ char *qdb_read_watch(qdb_handle_t h);
  * event object.
  */
 QUBESDBCLIENT_API
-#ifdef WIN32
+#ifdef _WIN32
 HANDLE
 #else
 int
 #endif
 qdb_watch_fd(qdb_handle_t h);
 
-#ifdef WIN32
+#ifdef _WIN32
 /** Free memory allocated by this DLL.
  * This is needed for executables that don't use the same CRT as this DLL (can't just use free() in such cases).
  * @param p The pointer to free

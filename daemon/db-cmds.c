@@ -4,7 +4,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <assert.h>
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #include <strsafe.h>
 
@@ -168,12 +168,12 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
             return 1;
         write_queue = d->vchan_buffer;
     } else {
-#ifndef WIN32
+#ifndef _WIN32
         write_queue = c->write_queue;
 #endif
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     if (c) {
         DWORD status = QpsWrite(d->pipe_server, c->id, data, data_len);
         if (status != ERROR_SUCCESS)
@@ -184,7 +184,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
 
     /* now it's either vchan, or local client on Linux */
     while ((buf_datacount = buffer_datacount(write_queue))) {
-#ifndef WIN32
+#ifndef _WIN32
         if (c)
             ret = write(c->fd, buffer_data(write_queue), buf_datacount);
         else
@@ -205,7 +205,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
 
     count = 0;
     while (count < data_len) {
-#ifndef WIN32
+#ifndef _WIN32
         if (c)
             ret = write(c->fd, data+count, data_len-count);
         else
@@ -228,7 +228,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
 
 static int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len) {
-#ifndef WIN32
+#ifndef _WIN32
     int ret, count;
 #endif
 
@@ -249,7 +249,7 @@ static int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
         }
         return 1;
     } else {
-#ifndef WIN32
+#ifndef _WIN32
         count = 0;
         while (count < data_len) {
             ret = read(c->fd, data + count, data_len - count);
@@ -264,7 +264,7 @@ static int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
                 return 0;
             count += ret;
         }
-#else // !WIN32
+#else // !_WIN32
         DWORD status = QpsRead(d->pipe_server, c->id, data, data_len);
         if (status != ERROR_SUCCESS)
             return 0;
@@ -312,7 +312,7 @@ static int discard_data_and_send_error(struct db_daemon_data *d, struct client *
     return 0;
 }
 
-#ifndef WIN32
+#ifndef _WIN32
 /** Send data to a client, but in non-blocking way - if write would block,
  * buffer the data instead
  * @param client Client connection
@@ -370,7 +370,7 @@ out:
     }
     return ret;
 }
-#else // !WIN32
+#else // !_WIN32
 int send_watch_notify(struct client *c, char *buf, size_t len, PIPE_SERVER ps)
 {
     DWORD status = QpsWrite(ps, c->id, buf, (DWORD)len);
@@ -541,7 +541,7 @@ static int handle_multiread(struct db_daemon_data *d, struct client *client,
         return discard_data_and_send_error(d, client, hdr);
     }
 
-#ifndef WIN32
+#ifndef _WIN32
     strncpy(search_path, hdr->path, QDB_MAX_PATH);
 #else
     StringCbCopyA(search_path, sizeof(search_path), hdr->path);
@@ -559,7 +559,7 @@ static int handle_multiread(struct db_daemon_data *d, struct client *client,
     }
     while (db_entry != d->db->entries &&
              strncmp(db_entry->path, search_path, search_path_len) == 0) {
-#ifndef WIN32
+#ifndef _WIN32
         strncpy(hdr->path, db_entry->path, sizeof(hdr->path));
 #else
         StringCbCopyA(hdr->path, sizeof(hdr->path), db_entry->path);
@@ -605,7 +605,7 @@ static int handle_list(struct db_daemon_data *d, struct client *client,
         return discard_data_and_send_error(d, client, hdr);
     }
 
-#ifndef WIN32
+#ifndef _WIN32
     strncpy(search_path, hdr->path, QDB_MAX_PATH);
 #else
     StringCbCopyA(search_path, sizeof(search_path), hdr->path);
@@ -617,7 +617,7 @@ static int handle_list(struct db_daemon_data *d, struct client *client,
     db_entry = qubesdb_search(d->db, search_path, 0);
     while (db_entry != d->db->entries &&
              strncmp(db_entry->path, search_path, search_path_len) == 0) {
-#ifndef WIN32
+#ifndef _WIN32
         strncpy(hdr->path, db_entry->path, sizeof(hdr->path));
 #else
         StringCbCopyA(hdr->path, sizeof(hdr->path), db_entry->path);
@@ -797,7 +797,7 @@ int handle_client_data(struct db_daemon_data *d, struct client *client,
 
     if (!verify_hdr(&hdr, 0)) {
         fprintf(stderr, "invalid message received from client "
-#ifndef WIN32
+#ifndef _WIN32
                 CLIENT_SOCKET_FORMAT "\n", client->fd);
 #else
                 CLIENT_SOCKET_FORMAT "\n", client->id);

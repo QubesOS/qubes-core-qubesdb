@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <errno.h>
-#ifndef WIN32
+#ifndef _WIN32
 #include <sys/socket.h>
 #include <sys/un.h>
 #include <unistd.h>
@@ -24,11 +24,11 @@
 #include <vchan-common.h>
 #endif
 
-#ifndef WIN32
+#ifndef _WIN32
 #ifdef HAVE_SYSTEMD
 #include <systemd/sd-daemon.h>
 #endif
-#else // !WIN32
+#else // !_WIN32
 // parameters for a client pipe thread
 struct thread_param {
     struct db_daemon_data *daemon;
@@ -42,7 +42,7 @@ struct thread_param {
 
 int init_vchan(struct db_daemon_data *d);
 
-#ifndef WIN32
+#ifndef _WIN32
 int sigterm_received = 0;
 static void sigterm_handler(int s) {
     sigterm_received = 1;
@@ -125,7 +125,7 @@ static int accept_new_client(struct db_daemon_data *d) {
     return add_client(d, new_client_fd);
 }
 
-#else // !WIN32
+#else // !_WIN32
 
 /* Main pipe server processing loop (separate thread).
  * Takes care of accepting clients and receiving data.
@@ -373,9 +373,9 @@ void close_server_socket(struct db_daemon_data *d) {
         QpsDestroy(d->pipe_server);
     d->pipe_server = NULL;
 }
-#endif // WIN32
+#endif // _WIN32
 
-#ifndef WIN32
+#ifndef _WIN32
 
 static size_t fill_fdsets_for_select(struct db_daemon_data *d,
         struct pollfd fds[static MAX_CLIENTS + 2]) {
@@ -571,7 +571,7 @@ static int init_server_socket(struct db_daemon_data *d) {
     return 1;
 }
 
-#endif /* !WIN32 */
+#endif /* !_WIN32 */
 
 int init_vchan(struct db_daemon_data *d) {
     if (d->vchan) {
@@ -593,7 +593,7 @@ int init_vchan(struct db_daemon_data *d) {
             d->vchan = NULL;
             return 1;
         }
-#ifndef WIN32
+#ifndef _WIN32
         d->vchan = libvchan_server_init(d->remote_domid, QUBESDB_VCHAN_PORT, 4096, 4096);
 #else
         // We give a 5 minute timeout here because xeniface can take some time
@@ -605,7 +605,7 @@ int init_vchan(struct db_daemon_data *d) {
         d->remote_connected = 0;
     } else {
         /* VM part: connect to admin domain */
-#ifndef WIN32
+#ifndef _WIN32
         d->vchan = libvchan_client_init(d->remote_domid, QUBESDB_VCHAN_PORT);
 #else
         // We give a 5 minute timeout here because xeniface can take some time
@@ -619,7 +619,7 @@ int init_vchan(struct db_daemon_data *d) {
     return 1;
 }
 
-#ifndef WIN32
+#ifndef _WIN32
 static int create_pidfile(struct db_daemon_data *d) {
     char pidfile_name[256];
     FILE *pidfile;
@@ -683,14 +683,14 @@ static void close_server_socket(struct db_daemon_data *d) {
             unlink(sockname.sun_path);
     }
 }
-#endif // !WIN32
+#endif // !_WIN32
 
 static void usage(char *argv0) {
     fprintf(stderr, "Usage: %s <remote-domid> [<remote-name>]\n", argv0);
     fprintf(stderr, "       Give <remote-name> only in dom0\n");
 }
 
-#ifdef WIN32
+#ifdef _WIN32
 DWORD WINAPI service_thread(PVOID param) {
     PSERVICE_WORKER_CONTEXT ctx = param;
     struct db_daemon_data *d = ctx->UserContext;
@@ -716,7 +716,7 @@ int main(int argc, char **argv) {
 int fuzz_main(int argc, char **argv) {
 #endif
     struct db_daemon_data d;
-#ifndef WIN32
+#ifndef _WIN32
     int ready_pipe[2] = {0, 0};
 #endif
     int ret;
@@ -726,7 +726,7 @@ int fuzz_main(int argc, char **argv) {
         exit(1);
     }
 
-#ifndef WIN32
+#ifndef _WIN32
     memset(&d, 0, sizeof(d));
 #else
     RtlSecureZeroMemory(&d, sizeof(d));
@@ -741,7 +741,7 @@ int fuzz_main(int argc, char **argv) {
     /* if not running under SystemD, fork and use pipe() to notify parent about
      * sucessful start */
     /* FIXME: OS dependent code */
-#ifndef WIN32
+#ifndef _WIN32
 #ifdef HAVE_SYSTEMD
     if (!getenv("NOTIFY_SOCKET")) {
 #else
@@ -793,7 +793,7 @@ int fuzz_main(int argc, char **argv) {
     signal(SIGTERM, sigterm_handler);
 #endif
 
-#ifndef WIN32
+#ifndef _WIN32
     d.db = qubesdb_init(write_client_buffered);
 #else
     libvchan_register_logger(vchan_logger);
@@ -810,7 +810,7 @@ int fuzz_main(int argc, char **argv) {
         exit(1);
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     d.db->pipe_server = d.pipe_server;
     /* For Windows, vchan is initialized later, after the service starts
        and reports to the OS. Otherwise it can time-out after the first
@@ -825,7 +825,7 @@ int fuzz_main(int argc, char **argv) {
                       NULL, // notification handler
                       NULL // notification context
                       );
-#else /* WIN32 */
+#else /* _WIN32 */
     if (!init_vchan(&d)) {
         fprintf(stderr, "FATAL: vchan initialization failed\n");
         exit(1);
@@ -863,7 +863,7 @@ int fuzz_main(int argc, char **argv) {
     create_pidfile(&d);
 
     ret = !mainloop(&d);
-#endif /* !WIN32 */
+#endif /* !_WIN32 */
 
     close_server_socket(&d);
 

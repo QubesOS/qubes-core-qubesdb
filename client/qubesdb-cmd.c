@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#ifdef WIN32
+#ifdef _WIN32
 #include <windows.h>
 #else
 #include <unistd.h>
@@ -45,7 +45,7 @@ static int encode_and_print_value(char *val) {
         if (val[i] >= 0x20 && (unsigned char)val[i] < 0x80)
             status = printf("%c", val[i]);
         else {
-#ifndef WIN32
+#ifndef _WIN32
             status = printf("\\x%02hhx", (unsigned int)val[i]);
 #else
             /* windows doesn't support 'h' modifier */
@@ -292,7 +292,7 @@ int main(int argc, char **argv) {
         do_cmd = parse_cmd(cmd_argv0);
     }
 
-#ifndef WIN32
+#ifndef _WIN32
     static const struct option options[] = {
         {"default", required_argument, 0, 'e'},
         {0, 0, 0, 0},
@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
                 usage(argv[0]);
                 ret = 0;
                 goto finish;
-#ifndef WIN32
+#ifndef _WIN32
             default:
                 usage(argv[0]);
                 exit(1);
@@ -373,7 +373,7 @@ int main(int argc, char **argv) {
         exit(1);
     }
 
-#ifdef WIN32
+#ifdef _WIN32
     optind -= 2;
 #endif
     switch (do_cmd) {

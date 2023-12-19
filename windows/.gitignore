@@ -1,5 +1,2 @@
-bin/
-*.msm
-*.opensdf
-*.sdf
-*.suo
+/bin/
+/qwt_version.h
