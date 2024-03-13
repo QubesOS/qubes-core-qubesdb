@@ -796,7 +796,7 @@ int fuzz_main(int argc, char **argv) {
 #ifndef _WIN32
     d.db = qubesdb_init(write_client_buffered);
 #else
-    libvchan_register_logger(vchan_logger);
+    libvchan_register_logger(vchan_logger, LogGetLevel());
     d.db = qubesdb_init(send_watch_notify);
     InitializeSRWLock(&d.lock);
 #endif
