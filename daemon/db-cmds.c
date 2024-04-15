@@ -139,10 +139,9 @@ static int verify_hdr(struct qdb_hdr *untrusted_hdr, int vchan) {
  */
 static int vchan_write_nonblock(libvchan_t *vchan, char *buf, size_t size) {
     size_t avail = libvchan_buffer_space(vchan);
-    ssize_t ret;
     if (avail < size)
         size = avail;
-    ret = libvchan_write(vchan, buf, size);
+    int ret = libvchan_write(vchan, buf, size);
     if (ret == 0) {
         ret = -1;
         errno = EWOULDBLOCK;
@@ -707,7 +706,7 @@ int handle_vchan_data(struct db_daemon_data *d) {
     /* This check is correct only because the whole message (up to
      * QDB_MAX_DATA) can fit into a vchan buffer. Otherwise it could cause a
      * deadlock. */
-    if (libvchan_data_ready(d->vchan) < hdr.data_len) {
+    if (libvchan_data_ready(d->vchan) < (int)hdr.data_len) {
         /* save the header, but process the message when the rest is available */
         d->vchan_pending_hdr = hdr;
         return 2;
