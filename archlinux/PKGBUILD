@@ -10,7 +10,7 @@ groups=()
 depends=(qubes-libvchan
   python-setuptools
   # Block updating if there is a major python update as the python API will be in the wrong PYTHONPATH
-  'python<3.12'
+  'python<3.13'
   )
 makedepends=(qubes-libvchan python)
 checkdepends=()
