@@ -1,3 +1,9 @@
+qubesdb (4.1.19-1) unstable; urgency=medium
+
+  * python: avoid conflicting _FORTIFY_SOURCE values
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 30 Apr 2024 15:52:18 +0200
+
 qubesdb (4.1.18-1) unstable; urgency=medium
 
   [ Ludovic Bellier ]
