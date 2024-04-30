@@ -1,7 +1,10 @@
-
+import os
 from setuptools import setup, Extension
 
 extra_compile_args  = [ "-fno-strict-aliasing", "-Werror" ]
+
+if "-D_FORTIFY_SOURCE=" in os.environ.get("CFLAGS", ""):
+    os.environ["CFLAGS"] = "-Wp,-U_FORTIFY_SOURCE " + os.environ["CFLAGS"]
 
 PATH_INCLUDES      = "../include"
 PATH_LIBS          = "../client"
