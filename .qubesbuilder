@@ -14,3 +14,15 @@ vm:
   archlinux:
     build:
     - archlinux
+  windows:
+    build:
+    - windows/vs2022/core-qubesdb.sln
+    bin:
+    - windows/vs2022/x64/@CONFIGURATION@/qubesdb-client/qubesdb-client.dll
+    - windows/vs2022/x64/@CONFIGURATION@/qubesdb-cmd/qubesdb-cmd.exe
+    - windows/vs2022/x64/@CONFIGURATION@/qubesdb-daemon/qubesdb-daemon.exe
+    inc:
+    - include/qubesdb.h
+    - include/qubesdb-client.h
+    lib:
+    - windows/vs2022/x64/@CONFIGURATION@/qubesdb-client/qubesdb-client.lib
