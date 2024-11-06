@@ -54,17 +54,17 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(QUBES_INCLUDES);$(ProjectDir)\..\..\..\include;$(EWDK_INCLUDE)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(QUBES_INCLUDES);$(ProjectDir)\..\..\..\include</IncludePath>
     <ExternalIncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(QUBES_LIBS);$(ProjectDir)\..\$(Platform)\$(Configuration)\qubesdb-client;$(EWDK_LIB)</LibraryPath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(QUBES_LIBS);$(ProjectDir)\..\$(Platform)\$(Configuration)\qubesdb-client</LibraryPath>
     <IntDir>$(SolutionDir)\tmp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\$(ProjectName)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(QUBES_INCLUDES);$(ProjectDir)\..\..\..\include;$(EWDK_INCLUDE)</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(QUBES_INCLUDES);$(ProjectDir)\..\..\..\include</IncludePath>
     <ExternalIncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(QUBES_LIBS);$(ProjectDir)\..\$(Platform)\$(Configuration)\qubesdb-client;$(EWDK_LIB)</LibraryPath>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(QUBES_LIBS);$(ProjectDir)\..\$(Platform)\$(Configuration)\qubesdb-client</LibraryPath>
     <IntDir>$(SolutionDir)\tmp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
     <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\$(ProjectName)\</OutDir>
   </PropertyGroup>
@@ -81,16 +81,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);windows-utils.lib;qubesdb-client.lib</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>cmd /c for %%e in (exe dll lib pdb) do @xcopy /E /F /Y /I "$(OutDir)\*.%%e" "$(SolutionDir)\..\bin\"</Command>
-      <Message>Copy output</Message>
-    </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>
-      </Command>
-      <Message>
-      </Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -108,16 +98,6 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);windows-utils.lib;qubesdb-client.lib</AdditionalDependencies>
     </Link>
-    <PostBuildEvent>
-      <Command>cmd /c for %%e in (exe dll lib pdb) do @xcopy /E /F /Y /I "$(OutDir)\*.%%e" "$(SolutionDir)\..\bin\"</Command>
-      <Message>Copy output</Message>
-    </PostBuildEvent>
-    <PreBuildEvent>
-      <Command>
-      </Command>
-      <Message>
-      </Message>
-    </PreBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
