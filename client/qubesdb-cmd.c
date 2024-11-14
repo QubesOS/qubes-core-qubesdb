@@ -270,7 +270,7 @@ static void usage(char *argv0) {
     fprintf(stderr, "  write path value [path value...] - write value(s)\n");
     fprintf(stderr, "  rm path [path...] - remove value(s)\n");
     fprintf(stderr, "  multiread path [path...] - read all entries matching given path\n");
-    fprintf(stderr, "  list path - list paths mathing given argument\n");
+    fprintf(stderr, "  list path - list paths matching given argument\n");
     fprintf(stderr, "  watch [-n N] path [path...] - watch given path(s) for "
             "modifications\n");
     fprintf(stderr, "    if -n given you can specify how many events should "

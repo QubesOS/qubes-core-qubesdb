@@ -516,7 +516,7 @@ static int handle_read(struct db_daemon_data *d, struct client *client,
     return 1;
 }
 
-/** Handle 'multiread' command. Send all mathing entries. This command is used
+/** Handle 'multiread' command. Send all matching entries. This command is used
  * for initial database synchronization by VM client part.
  * vchan side (if command received from local client).
  * This command is valid on both client socket and vchan, so input data must be
