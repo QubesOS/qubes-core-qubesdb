@@ -1,17 +1,16 @@
 # `QubesDB` implementation for Windows.
 
-- TODO: installer for win10 QWT
-- TODO: integrate with Qubes builder
+## Local command-line build on Windows
 
-### Environment variables
+### Prerequisites
 
-- `QUBES_INCLUDES` must contain paths containing `windows-utils` and `libvchan` includes. Normally it's `<src>/qubes-windows-utils/include;<src>/qubes-core-vchan-xen/windows/include`.
-- `QUBES_LIBS` must contain paths containing `windows-utils` and `libvchan` libraries. Normally it's `<src>/qubes-windows-utils/bin;<src>/qubes-core-vchan-xen/windows/bin`.
+- Microsoft EWDK iso mounted as a drive
+- `qubes-builderv2`
+- `powershell-yaml` PowerShell package (run `powershell -command Install-Package powershell-yaml` as admin)
+  (TODO: provide offline installer for this)
+- `vmm-xen-windows-pvdrivers`, `core-vchan-xen` and `windows-utils` built with the same
+  `output_dir` as below
 
-## Command-line build
+### Build
 
-`EWDK_PATH` env variable must be set to the root of MS Enterprise WDK for Windows 10/Visual Studio 2022. 
-
-`build.cmd` script builds the solution from command line using the EWDK (no need for external VS installation).
-
-Usage: `build.cmd Release|Debug`
+- run `powershell qubes-builderv2\qubesbuilder\plugins\build_windows\scripts\local\build.ps1 src_dir output_dir Release|Debug`
