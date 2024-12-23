@@ -1,3 +1,4 @@
 /usr/sbin/qubesdb-daemon     -- gen_context(system_u:object_r:qubes_qubesdb_daemon_exec_t,s0)
+/usr/bin/qubesdb-daemon      -- gen_context(system_u:object_r:qubes_qubesdb_daemon_exec_t,s0)
 /run/qubes/qubesdb\.sock     -s gen_context(system_u:object_r:qubes_qubesdb_socket_t,s0)
 /var/run/qubes/qubesdb\.sock -s gen_context(system_u:object_r:qubes_qubesdb_socket_t,s0)
