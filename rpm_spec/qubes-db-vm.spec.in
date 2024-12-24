@@ -62,6 +62,9 @@ SELinux enforcing in a qube.
 %{_datadir}/selinux/devel/include/contrib/ipp-qubes-core-qubesdb.if
 %{qubes_db_vm_selinux}
 
+%pre selinux
+%selinux_relabel_pre
+
 %post selinux
 %selinux_modules_install %{qubes_db_vm_selinux}
 
