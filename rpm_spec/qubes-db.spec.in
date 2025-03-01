@@ -78,6 +78,10 @@ make install \
          LIBDIR=%{_libdir} \
          BINDIR=%{_bindir} \
          SBINDIR=%{_sbindir}
+%if "%{_sbindir}" != "%{_bindir}"
+mkdir -p %{buildroot}%{_sbindir}
+ln -s ../bin/qubesdb-daemon %{buildroot}%{_sbindir}/qubesdb-daemon
+%endif
 
 %files
 %doc
@@ -89,7 +93,10 @@ make install \
 %{_bindir}/qubesdb-multiread
 %{_bindir}/qubesdb-list
 %{_bindir}/qubesdb-watch
+%{_bindir}/qubesdb-daemon
+%if "%{_sbindir}" != "%{_bindir}"
 %{_sbindir}/qubesdb-daemon
+%endif
 
 %files libs
 %{_libdir}/libqubesdb.so

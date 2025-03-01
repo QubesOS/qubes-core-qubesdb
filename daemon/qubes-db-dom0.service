@@ -4,7 +4,7 @@ After=systemd-tmpfiles-setup.service
 
 [Service]
 # Both agent and daemon for dom0
-ExecStart=/usr/sbin/qubesdb-daemon 0 dom0
+ExecStart=/usr/bin/qubesdb-daemon 0 dom0
 Type=notify
 StandardOutput=syslog
 

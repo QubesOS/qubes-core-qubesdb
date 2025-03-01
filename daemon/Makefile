@@ -24,13 +24,13 @@ LIBS += -L$(QUBES_LIBS) -lvchan
 endif
 CFLAGS += -DBACKEND_VMM_$(BACKEND_VMM)
 
-SBINDIR ?= /usr/sbin
+BINDIR ?= /usr/bin
 
 all: qubesdb-daemon$(EXEEXT)
 
 install:
-	install -d $(DESTDIR)$(SBINDIR)
-	install qubesdb-daemon$(EXEEXT) $(DESTDIR)$(SBINDIR)/
+	install -d $(DESTDIR)$(BINDIR)
+	install qubesdb-daemon$(EXEEXT) $(DESTDIR)$(BINDIR)/
 
 qubesdb-daemon$(EXEEXT): db-cmds.o db-daemon.o db-core.o buffer.o
 	$(CC) $(LDFLAGS) -o $@ $^ $(APPEND_LDFLAGS) $(LIBS)
