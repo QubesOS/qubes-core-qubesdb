@@ -1,3 +1,10 @@
+qubesdb (4.3.0-1) unstable; urgency=medium
+
+  * Move all binaries from /usr/sbin to /usr/bin
+  * ci: add R4.3
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 03 Mar 2025 13:42:56 +0100
+
 qubesdb (4.2.7-1) unstable; urgency=medium
 
   [ William Robinet ]
