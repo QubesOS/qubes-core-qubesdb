@@ -1,3 +1,18 @@
+qubesdb (4.2.8-1) unstable; urgency=medium
+
+  [ Rafał Wojdyła ]
+  * Update for Windows 10
+  * Update gitignore
+  * Support building from the installer
+  * Make project outputs separate to eliminate postbuild copy overlap
+  * windows: properly set vchan/xencontrol log level
+  * Fix build warnings
+  * windows: support builder v2
+  * windows: Fix local build
+  * windows: update gitignore
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 28 Mar 2025 15:21:29 +0100
+
 qubesdb (4.2.7-1) unstable; urgency=medium
 
   [ William Robinet ]
