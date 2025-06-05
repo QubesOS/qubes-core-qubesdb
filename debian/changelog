@@ -1,3 +1,9 @@
+qubesdb (4.2.9-1) unstable; urgency=medium
+
+  * Move all binaries from /usr/sbin to /usr/bin
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Fri, 06 Jun 2025 01:28:43 +0200
+
 qubesdb (4.2.8-1) unstable; urgency=medium
 
   [ Rafał Wojdyła ]
