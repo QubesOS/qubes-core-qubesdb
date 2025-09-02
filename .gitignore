@@ -8,5 +8,6 @@
 rpm/
 deb/
 pkgs/
+/.artifacts/
 /selinux/*.pp
 /selinux/tmp/

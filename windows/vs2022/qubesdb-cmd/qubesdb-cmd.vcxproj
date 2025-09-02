@@ -38,35 +38,30 @@
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
-  <ImportGroup Label="ExtensionSettings">
-  </ImportGroup>
-  <ImportGroup Label="Shared">
-  </ImportGroup>
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="Shared" />
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
-  <ImportGroup Label="PropertySheets">
-    <Import Project="$(SolutionDir)\dirs.props" Condition="exists('$(SolutionDir)\dirs.props')" Label="Installer include/lib directory overrides" />
-  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(QUBES_INCLUDES);$(ProjectDir)\..\..\..\include</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(QUBES_INCLUDES);$(ProjectDir)\..\..\..\include;$(QUBES_REPO)\vmm-xen-windows-pvdrivers\inc;$(QUBES_REPO)\core-vchan-xen\inc;$(QUBES_REPO)\windows-utils\inc</IncludePath>
     <ExternalIncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(QUBES_LIBS);$(ProjectDir)\..\$(Platform)\$(Configuration)\qubesdb-client</LibraryPath>
-    <IntDir>$(SolutionDir)\tmp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
-    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\$(ProjectName)\</OutDir>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(QUBES_LIBS);$(ProjectDir)\..\$(Platform)\$(Configuration)\qubesdb-client;$(QUBES_REPO)\vmm-xen-windows-pvdrivers\lib;$(QUBES_REPO)\core-vchan-xen\lib;$(QUBES_REPO)\windows-utils\lib</LibraryPath>
+    <IntDir>$(ProjectDir)\..\tmp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\$(ProjectName)\</OutDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(QUBES_INCLUDES);$(ProjectDir)\..\..\..\include</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(QUBES_INCLUDES);$(ProjectDir)\..\..\..\include;$(QUBES_REPO)\vmm-xen-windows-pvdrivers\inc;$(QUBES_REPO)\core-vchan-xen\inc;$(QUBES_REPO)\windows-utils\inc</IncludePath>
     <ExternalIncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(QUBES_LIBS);$(ProjectDir)\..\$(Platform)\$(Configuration)\qubesdb-client</LibraryPath>
-    <IntDir>$(SolutionDir)\tmp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
-    <OutDir>$(SolutionDir)$(Platform)\$(Configuration)\$(ProjectName)\</OutDir>
+    <LibraryPath>$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64);$(QUBES_LIBS);$(ProjectDir)\..\$(Platform)\$(Configuration)\qubesdb-client;$(QUBES_REPO)\vmm-xen-windows-pvdrivers\lib;$(QUBES_REPO)\core-vchan-xen\lib;$(QUBES_REPO)\windows-utils\lib</LibraryPath>
+    <IntDir>$(ProjectDir)\..\tmp\$(ProjectName)\$(Platform)\$(Configuration)\</IntDir>
+    <OutDir>$(ProjectDir)\..\$(Platform)\$(Configuration)\$(ProjectName)\</OutDir>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
@@ -81,6 +76,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);windows-utils.lib;qubesdb-client.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>powershell $(QB_SCRIPTS)\local\postbuild.ps1 $(ProjectDir)\..\..\.. $(QUBES_REPO) $(Configuration)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
@@ -98,6 +96,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);windows-utils.lib;qubesdb-client.lib</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>powershell $(QB_SCRIPTS)\local\postbuild.ps1 $(ProjectDir)\..\..\.. $(QUBES_REPO) $(Configuration)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
