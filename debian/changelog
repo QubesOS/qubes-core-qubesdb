@@ -1,3 +1,14 @@
+qubesdb (4.3.2-1) unstable; urgency=medium
+
+  [ Rafał Wojdyła ]
+  * windows: Fix local build, project cleanup
+
+  [ Ludovic Bellier ]
+  * Bump Python version dependency in Arch packages Arch just bumped to
+    Python 3.14.
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Sun, 11 Jan 2026 21:56:59 +0100
+
 qubesdb (4.3.1-1) unstable; urgency=medium
 
   [ Rafał Wojdyła ]
