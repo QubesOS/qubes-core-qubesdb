@@ -1,3 +1,11 @@
+qubesdb (4.2.10-1) unstable; urgency=medium
+
+  [ Ludovic Bellier ]
+  * Bump Python version dependency in Arch packages Arch just bumped to
+    Python 3.14.
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Mon, 12 Jan 2026 23:02:54 +0100
+
 qubesdb (4.2.9-1) unstable; urgency=medium
 
   * Move all binaries from /usr/sbin to /usr/bin
