@@ -4,7 +4,7 @@ all: build
 PYTHON ?= python3
 
 .PHONY: build
-build: 
+build:
 	CC="$(CC)" CFLAGS="$(CFLAGS)" $(PYTHON) setup.py build
 
 .PHONY: install

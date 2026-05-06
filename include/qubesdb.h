@@ -11,52 +11,52 @@
 enum qdb_msg {
     /** Read single value, path must not end with '/'. Successful read return
      * data with QDB_RESP_READ message.
-     * 
+     *
      * Valid only on local socket. */
 
     QDB_CMD_READ,
-    
-    /** Write single value, path must not end with '/'. 
-     * 
+
+    /** Write single value, path must not end with '/'.
+     *
      * Valid on both local and inter-VM socket. */
     QDB_CMD_WRITE,
-    
+
     /** Read multiple entries with path matching to given prefix (even if path
      * do not end with '/'). If empty path given, dump all database in reverse
      * order (to improve insert on other end).
-     * 
+     *
      * Results given as series of QDB_RESP_MULTIREAD messages. End of data
      * signaled with data_len = 0 and path[0] = 0.
-     * 
+     *
      * Valid on both local and inter-VM socket. Used for initial data dump in
      * VM daemon */
     QDB_CMD_MULTIREAD,
-    
+
     /** Get list of entries matching given path (even if path do not end with
      * '/'). Only paths are returned, not values.
-     * 
+     *
      * Results given as series of QDB_RESP_LIST messages. End of data signaled with
      * data_len = 0 (as in all other QDB_RESP_LIST messages) and path[0] = 0.
-     * 
+     *
      * Valid only on local socket. */
     QDB_CMD_LIST,
-    
+
     /** Remove entry from database. If path ends with '/' - remove all matching entries.
      * Valid on both local and inter-VM socket. */
     QDB_CMD_RM,
-    
+
     /** Register watch for given path. If path ends with '/' - all matching
      * path will be watched. Given path can not exists in database yet.
-     * 
+     *
      * When modification detected, QDB_RESP_WATCH will be generated.
      * Application should be prepared to receive QDB_RESP_WATCH at any time,
-     * even in the middle of multi-response command processing. 
+     * even in the middle of multi-response command processing.
      * Same path can be registered multiple times - each write/delete will generate as
      * many events as registered matching watches.
      *
      * Valid only on local socket. */
     QDB_CMD_WATCH,
-    
+
     /** Unregister watch for given path.
      *
      * Application should be prepared to receive QDB_RESP_WATCH even for (just)
@@ -69,22 +69,22 @@ enum qdb_msg {
     /** Command processed successfully, no data in response, path
      * preserved/copied from command message */
     QDB_RESP_OK,
-    
+
     /** Error during processing command - given path not found in database.
      * This can happen for QDB_CMD_READ, QDB_CMD_RM, QDB_CMD_UNWATCH */
     QDB_RESP_ERROR_NOENT,
-    
+
     /** Other error, path preserved/copied from command message */
     QDB_RESP_ERROR,
-    
+
     /** Return data for QDB_CMD_READ */
     QDB_RESP_READ,
 
     /** Return data for QDB_CMD_MULTIREAD */
-    QDB_RESP_MULTIREAD, 
+    QDB_RESP_MULTIREAD,
 
     /** Return data for QDB_RESP_LIST */
-    QDB_RESP_LIST, 
+    QDB_RESP_LIST,
 
     /** Watch event occurred, path contains just modified entry path */
     QDB_RESP_WATCH,

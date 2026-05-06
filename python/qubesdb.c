@@ -19,7 +19,7 @@
  *
  */
 
-#define PY_SSIZE_T_CLEAN 
+#define PY_SSIZE_T_CLEAN
 #include <Python.h>
 
 #include <stdbool.h>
@@ -393,7 +393,7 @@ static PyObject *qdbpy_close(QdbHandle *self)
  * Parse path arguments from the given args,
  * convert the given self value to an qdb_handle, and return all two by
  * reference.
- * 
+ *
  * @return 1 on success, in which case *qdb, and *path are valid, or 0 on
  * failure.
  */

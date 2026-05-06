@@ -71,7 +71,7 @@ int libvchan_recv(libvchan_t *ctrl, void *data, size_t size) {
 	}
 
 	memcpy(data, fuzz_data + fuzz_offset, size);
-	
+
 	fuzz_size -= size;
 	fuzz_offset += size;
 
