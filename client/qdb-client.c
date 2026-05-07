@@ -104,6 +104,7 @@ static int connect_to_daemon(struct qdb_handle *qh) {
     int len;
     int fd;
 
+    /* Try RW socket first */
     if ((fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
         perror("socket");
         goto error;
@@ -111,15 +112,41 @@ static int connect_to_daemon(struct qdb_handle *qh) {
 
     remote.sun_family = AF_UNIX;
     if (qh->vmname) {
-        snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_PATH_PATTERN, qh->vmname);
+        snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_PATH_RW_PATTERN, qh->vmname);
     } else {
-        snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_LOCAL_PATH);
+        snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_LOCAL_RW_PATH);
     }
 
     len = strlen(remote.sun_path) + sizeof(remote.sun_family);
-    if (connect(fd, (struct sockaddr *) &remote, len) == -1) {
+    if (connect(fd, (struct sockaddr *) &remote, len) != -1) {
+        goto success;
+    }
+
+    /* Cleanup if that fails */
+    if (fd >= 0)
+      close(fd);
+
+    /* Try RO socket next */
+    if ((fd = socket(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0)) == -1) {
+        perror("socket");
         goto error;
     }
+
+    remote.sun_family = AF_UNIX;
+    if (qh->vmname) {
+        snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_PATH_RO_PATTERN, qh->vmname);
+    } else {
+        snprintf(remote.sun_path, sizeof(remote.sun_path), QDB_DAEMON_LOCAL_RO_PATH);
+    }
+
+    len = strlen(remote.sun_path) + sizeof(remote.sun_family);
+    if (connect(fd, (struct sockaddr *) &remote, len) != -1) {
+        goto success;
+    }
+
+    goto error;
+
+success:
     qh->fd = fd;
     return 1;
 

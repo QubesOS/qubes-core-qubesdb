@@ -99,7 +99,8 @@ enum qdb_msg {
 #ifdef WIN32
 #define QDB_DAEMON_PATH_PATTERN L"\\\\.\\pipe\\qubesdb.%S.sock"
 #else
-#define QDB_DAEMON_PATH_PATTERN "/var/run/qubes/qubesdb.%s.sock"
+#define QDB_DAEMON_PATH_RW_PATTERN "/var/run/qubes/qubesdb.%s.sock"
+#define QDB_DAEMON_PATH_RO_PATTERN "/var/run/qubes/qubesdb.%s.ro.sock"
 #endif
 /** Socket path for VM part of daemon */
 #ifdef WIN32
@@ -110,7 +111,8 @@ enum qdb_msg {
 #define QDB_DAEMON_LOCAL_PATH L"\\\\.\\pipe\\qubesdb.sock"
 #endif
 #else
-#define QDB_DAEMON_LOCAL_PATH "/var/run/qubes/qubesdb.sock"
+#define QDB_DAEMON_LOCAL_RW_PATH "/var/run/qubes/qubesdb.sock"
+#define QDB_DAEMON_LOCAL_RO_PATH "/var/run/qubes/qubesdb.ro.sock"
 #endif
 
 #ifdef WIN32

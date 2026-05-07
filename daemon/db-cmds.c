@@ -397,6 +397,13 @@ static int handle_write(struct db_daemon_data *d, struct client *client,
     char untrusted_data[QDB_MAX_DATA];
     char *data;
 
+#ifndef _WIN32
+    if (client != NULL && !client->can_write) {
+        fprintf(stderr, "write attempted by read-only client\n");
+        return discard_data_and_send_error(d, client, hdr);
+    }
+#endif
+
     if (!read_vchan_or_client(d, client, untrusted_data, hdr->data_len)) {
         return 0;
     }
@@ -448,6 +455,13 @@ static int handle_write(struct db_daemon_data *d, struct client *client,
 /* this command is valid on both client socket and vchan */
 static int handle_rm(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
+#ifndef _WIN32
+    if (client != NULL && !client->can_write) {
+        fprintf(stderr, "write attempted by read-only client\n");
+        return discard_data_and_send_error(d, client, hdr);
+    }
+#endif
+
     if (hdr->data_len > 0) {
         fprintf(stderr, "CMD_RM shouldn't have data field\n");
         /* recovery path */

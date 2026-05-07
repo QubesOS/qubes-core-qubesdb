@@ -40,6 +40,10 @@ struct thread_param {
 #include <qubesdb.h>
 #include "qubesdb_internal.h"
 
+#ifndef _WIN32
+mode_t rw_socket_mode = 0666;
+#endif
+
 int init_vchan(struct db_daemon_data *d);
 
 #ifndef _WIN32
@@ -53,7 +57,7 @@ static void sigterm_handler(int s) {
  * @param c Socket of new client
  * @return 1 on success, 0 on failure
  */
-static int add_client(struct db_daemon_data *d, client_socket_t c) {
+static int add_client(struct db_daemon_data *d, client_socket_t c, int is_rw_socket) {
     struct client *client;
 
     client = malloc(sizeof(*client));
@@ -62,6 +66,7 @@ static int add_client(struct db_daemon_data *d, client_socket_t c) {
         return 0;
     }
     client->fd = c;
+    client->can_write = is_rw_socket;
 
     client->write_queue = buffer_create();
     if (!client->write_queue) {
@@ -111,18 +116,22 @@ static int disconnect_client(struct db_daemon_data *d, struct client *c) {
  * @param d Daemon global data
  * @return 1 on success, 0 on failure
  */
-static int accept_new_client(struct db_daemon_data *d) {
+static int accept_new_client(struct db_daemon_data *d, int is_rw_socket) {
     client_socket_t new_client_fd;
     struct sockaddr_un peer;
     unsigned int addrlen;
 
     addrlen = sizeof(peer);
-    new_client_fd = accept(d->socket_fd, (struct sockaddr *) &peer, &addrlen);
+    if (is_rw_socket) {
+        new_client_fd = accept(d->rw_socket_fd, (struct sockaddr *) &peer, &addrlen);
+    } else {
+        new_client_fd = accept(d->ro_socket_fd, (struct sockaddr *) &peer, &addrlen);
+    }
     if (new_client_fd == -1) {
         perror("unix accept");
         exit(1);
     }
-    return add_client(d, new_client_fd);
+    return add_client(d, new_client_fd, is_rw_socket);
 }
 
 #else // !_WIN32
@@ -378,16 +387,21 @@ void close_server_socket(struct db_daemon_data *d) {
 #ifndef _WIN32
 
 static size_t fill_fdsets_for_select(struct db_daemon_data *d,
-        struct pollfd fds[static MAX_CLIENTS + 2]) {
+        struct pollfd fds[static MAX_CLIENTS + 3]) {
     struct client *client;
-    size_t total_fds = 2;
+    size_t total_fds = 3;
 
     fds[0] = (struct pollfd) {
-        .fd = d->socket_fd,
+        .fd = d->rw_socket_fd,
         .events = POLLIN | POLLHUP,
         .revents = 0,
     };
     fds[1] = (struct pollfd) {
+        .fd = d->ro_socket_fd,
+        .events = POLLIN | POLLHUP,
+        .revents = 0,
+    };
+    fds[2] = (struct pollfd) {
         .fd = d->vchan ? libvchan_fd_for_select(d->vchan) : -1,
         .events = POLLIN | POLLHUP,
         .revents = 0,
@@ -395,7 +409,7 @@ static size_t fill_fdsets_for_select(struct db_daemon_data *d,
 
     client = d->client_list;
     while (client) {
-        assert(total_fds < MAX_CLIENTS + 2);
+        assert(total_fds < MAX_CLIENTS + 3);
         /* Do not read commands from client, which have some buffered data,
          * first try to send them all. If client do not handle write buffering
          * properly, it can cause a deadlock there, but at least qubesdb-daemon
@@ -413,7 +427,7 @@ static size_t fill_fdsets_for_select(struct db_daemon_data *d,
 static int mainloop(struct db_daemon_data *d) {
     struct client *client;
     int ret;
-    static struct pollfd fds[MAX_CLIENTS + 2];
+    static struct pollfd fds[MAX_CLIENTS + 3];
     sigset_t sigterm_mask;
     sigset_t oldmask;
     struct timespec ts = { 10, 0 };
@@ -422,10 +436,10 @@ static int mainloop(struct db_daemon_data *d) {
     sigaddset(&sigterm_mask, SIGTERM);
 
     while (1) {
-        size_t current_fd = 2;
+        size_t current_fd = 3;
         size_t const nfds = fill_fdsets_for_select(d, fds);
-        assert(nfds >= 2);
-        assert(nfds <= MAX_CLIENTS + 2);
+        assert(nfds >= 3);
+        assert(nfds <= MAX_CLIENTS + 3);
 
         if (sigprocmask(SIG_BLOCK, &sigterm_mask, &oldmask) < 0) {
             perror("sigprocmask");
@@ -446,7 +460,7 @@ static int mainloop(struct db_daemon_data *d) {
         sigprocmask(SIG_SETMASK, &oldmask, NULL);
 
         if (d->vchan) {
-            if (fds[1].revents)
+            if (fds[2].revents)
                 libvchan_wait(d->vchan);
             if (!libvchan_is_open(d->vchan)) {
                 fprintf(stderr, "vchan closed\n");
@@ -486,7 +500,7 @@ static int mainloop(struct db_daemon_data *d) {
 
         client = d->client_list;
         while (client) {
-            assert(current_fd < MAX_CLIENTS + 2);
+            assert(current_fd < MAX_CLIENTS + 3);
             short revents = fds[current_fd++].revents;
             if (revents & POLLOUT) {
                 /* just send bufferred data, possibly not all of them */
@@ -505,69 +519,124 @@ static int mainloop(struct db_daemon_data *d) {
         assert(current_fd == nfds);
 
         if (fds[0].revents) {
-            accept_new_client(d);
+            accept_new_client(d, 1);
+        }
+        if (fds[1].revents) {
+            accept_new_client(d, 0);
         }
     }
     return 1;
 }
 
+/* FIXME: This function is now mis-named - it should be called
+ * init_server_sockets, but renaming it would force us to either rename the
+ * corresponding Windows function with the same name (which would imply
+ * implementing rw and ro sockets for Windows), or would require us to use an
+ * ifdef to cope with different function names. Both of those options are a
+ * pain, so we live with a poorly named function for now. */
 static int init_server_socket(struct db_daemon_data *d) {
-    struct sockaddr_un sockname;
+    struct sockaddr_un rw_sockname;
+    struct sockaddr_un ro_sockname;
     int s;
     struct stat stat_buf;
     mode_t old_umask;
 
-    memset(&sockname, 0, sizeof(sockname));
-    sockname.sun_family = AF_UNIX;
+    memset(&rw_sockname, 0, sizeof(rw_sockname));
+    memset(&ro_sockname, 0, sizeof(ro_sockname));
+    rw_sockname.sun_family = ro_sockname.sun_family = AF_UNIX;
     if (mkdir("/var/run/qubes", 0775) && errno != EEXIST) {
         perror("mkdir /var/run/qubes");
         return 0;
     }
     if (d->remote_name) {
-        if ((unsigned)snprintf(sockname.sun_path, sizeof sockname.sun_path,
-                               QDB_DAEMON_PATH_PATTERN, d->remote_name) >=
-            sizeof sockname.sun_path) {
+        if ((unsigned)snprintf(rw_sockname.sun_path,
+                               sizeof rw_sockname.sun_path,
+                               QDB_DAEMON_PATH_RW_PATTERN, d->remote_name) >=
+            sizeof rw_sockname.sun_path) {
+            perror("snprintf()");
+            return 0;
+        }
+        if ((unsigned)snprintf(ro_sockname.sun_path,
+                               sizeof ro_sockname.sun_path,
+                               QDB_DAEMON_PATH_RO_PATTERN, d->remote_name) >=
+            sizeof ro_sockname.sun_path) {
             perror("snprintf()");
             return 0;
         }
         if (d->remote_domid == 0) {
             /* the same daemon as both VM and Admin parts */
-            unlink(QDB_DAEMON_LOCAL_PATH);
-            if (symlink(sockname.sun_path, QDB_DAEMON_LOCAL_PATH) < 0) {
-                perror("symlink " QDB_DAEMON_LOCAL_PATH);
+            unlink(QDB_DAEMON_LOCAL_RW_PATH);
+            unlink(QDB_DAEMON_LOCAL_RO_PATH);
+            if (symlink(rw_sockname.sun_path, QDB_DAEMON_LOCAL_RW_PATH) < 0) {
+                perror("symlink " QDB_DAEMON_LOCAL_RW_PATH);
+                return 0;
+            }
+            if (symlink(ro_sockname.sun_path, QDB_DAEMON_LOCAL_RO_PATH) < 0) {
+                perror("symlink " QDB_DAEMON_LOCAL_RO_PATH);
                 return 0;
             }
         }
     } else {
-        _Static_assert(sizeof QDB_DAEMON_LOCAL_PATH <= sizeof sockname.sun_path,
-                       QDB_DAEMON_LOCAL_PATH "too long");
-        strcpy(sockname.sun_path, QDB_DAEMON_LOCAL_PATH);
+        _Static_assert(sizeof QDB_DAEMON_LOCAL_RW_PATH
+                       <= sizeof rw_sockname.sun_path,
+                       QDB_DAEMON_LOCAL_RW_PATH "too long");
+        _Static_assert(sizeof QDB_DAEMON_LOCAL_RO_PATH
+                       <= sizeof ro_sockname.sun_path,
+                       QDB_DAEMON_LOCAL_RO_PATH "too long");
+        strcpy(rw_sockname.sun_path, QDB_DAEMON_LOCAL_RW_PATH);
+        strcpy(ro_sockname.sun_path, QDB_DAEMON_LOCAL_RO_PATH);
     }
 
-    if (unlink(sockname.sun_path) && errno != ENOENT) {
+    if (unlink(rw_sockname.sun_path) && errno != ENOENT) {
+        perror("unlink() failed");
+        return 0;
+    }
+    if (unlink(ro_sockname.sun_path) && errno != ENOENT) {
         perror("unlink() failed");
         return 0;
     }
 
-    /* make socket available for anyone */
-    old_umask = umask(0);
+    /* make rw socket available to a potentially restricted set of users */
+    old_umask = umask(~rw_socket_mode & 0777);
 
     s = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (bind(s, (struct sockaddr *) &sockname, sizeof(sockname)) == -1) {
+    if (bind(s, (struct sockaddr *) &rw_sockname,
+             sizeof(rw_sockname)) == -1) {
         perror("bind() failed");
         close(s);
         return 0;
     }
-//      chmod(sockname.sun_path, 0666);
+//      chmod(rw_sockname.sun_path, rw_socket_mode);
     if (listen(s, SERVER_SOCKET_BACKLOG) == -1) {
         perror("listen() failed");
         close(s);
         return 0;
     }
-    d->socket_fd = s;
+    d->rw_socket_fd = s;
+
+    /* make ro socket available for anyone */
+    umask(0111);
+
+    s = socket(AF_UNIX, SOCK_STREAM, 0);
+    if (bind(s, (struct sockaddr *) &ro_sockname,
+             sizeof(ro_sockname)) == -1) {
+        perror("bind() failed");
+        close(s);
+        return 0;
+    }
+//      chmod(ro_sockname.sun_path, 0666);
+    if (listen(s, SERVER_SOCKET_BACKLOG) == -1) {
+        perror("listen() failed");
+        close(s);
+        return 0;
+    }
+    d->ro_socket_fd = s;
+
     umask(old_umask);
-    if (stat(sockname.sun_path, &stat_buf) == 0)
-        d->socket_ino = stat_buf.st_ino;
+    if (stat(rw_sockname.sun_path, &stat_buf) == 0)
+        d->rw_socket_ino = stat_buf.st_ino;
+    if (stat(ro_sockname.sun_path, &stat_buf) == 0)
+        d->ro_socket_ino = stat_buf.st_ino;
     return 1;
 }
 
@@ -663,30 +732,58 @@ static void remove_pidfile(struct db_daemon_data *d) {
     }
 }
 
+/* FIXME: This function's name is also bad; it should be
+ * close_server_sockets. */
 static void close_server_socket(struct db_daemon_data *d) {
-    struct sockaddr_un sockname;
+    struct sockaddr_un rw_sockname;
+    struct sockaddr_un ro_sockname;
     socklen_t addrlen;
     struct stat stat_buf;
 
-    if (d->socket_fd < 0)
-        /* already closed */
-        return ;
-    addrlen = sizeof(sockname);
-    if (getsockname(d->socket_fd, (struct sockaddr *)&sockname, &addrlen) < 0)
-        /* just do not remove socket when cannot get its path */
-        return;
+    do {
+        if (d->rw_socket_fd < 0)
+            /* already closed */
+            break;
+        addrlen = sizeof(rw_sockname);
+        if (getsockname(d->rw_socket_fd, (struct sockaddr *)&rw_sockname,
+                        &addrlen) < 0)
+            /* just do not remove socket when cannot get its path */
+            break;
 
-    close(d->socket_fd);
-    if (stat(sockname.sun_path, &stat_buf) == 0) {
-        /* remove the socket only if it's the one created this process */
-        if (d->socket_ino == stat_buf.st_ino)
-            unlink(sockname.sun_path);
-    }
+        close(d->rw_socket_fd);
+        if (stat(rw_sockname.sun_path, &stat_buf) == 0) {
+            /* remove the socket only if it's the one created this process */
+            if (d->rw_socket_ino == stat_buf.st_ino)
+                unlink(rw_sockname.sun_path);
+        }
+    } while(0);
+
+    do {
+        if (d->ro_socket_fd < 0)
+            /* already closed */
+            break;
+        addrlen = sizeof(ro_sockname);
+        if (getsockname(d->ro_socket_fd, (struct sockaddr *)&ro_sockname,
+                        &addrlen) < 0)
+            /* just do not remove socket when cannot get its path */
+            break;
+
+        close(d->ro_socket_fd);
+        if (stat(ro_sockname.sun_path, &stat_buf) == 0) {
+            /* remove the socket only if it's the one created this process */
+            if (d->ro_socket_ino == stat_buf.st_ino)
+                unlink(ro_sockname.sun_path);
+        }
+    } while(0);
 }
 #endif // !_WIN32
 
 static void usage(char *argv0) {
+#ifndef _WIN32
+    fprintf(stderr, "Usage: %s [--rw-socket-perms=666] <remote-domid> [<remote-name>]\n", argv0);
+#else
     fprintf(stderr, "Usage: %s <remote-domid> [<remote-name>]\n", argv0);
+#endif
     fprintf(stderr, "       Give <remote-name> only in dom0\n");
 }
 
@@ -715,16 +812,61 @@ int main(int argc, char **argv) {
 #else
 int fuzz_main(int argc, char **argv) {
 #endif
+    int arg_pos = 0;
     struct db_daemon_data d;
 #ifndef _WIN32
     int ready_pipe[2] = {0, 0};
 #endif
     int ret;
 
-    if (argc != 2 && argc != 3 && argc != 4) {
+    if (argc < 1) {
+        fprintf(stderr, "argc < 1, cannot continue\n");
+        exit(1);
+#ifndef _WIN32
+    } else if (argc < 2 || argc > 4) {
+#else
+    } else if (argc < 2 || argc > 3) {
+#endif
         usage(argv[0]);
         exit(1);
     }
+    arg_pos = 1;
+
+#ifndef _WIN32
+    if (strncmp(argv[arg_pos], "--rw-socket-perms=", strlen("--rw-socket-perms=")) == 0) {
+        char *arg_start = strsep(&argv[arg_pos], "=");
+        char *endptr = NULL;
+        unsigned long parse_mode = 0;
+
+        assert(arg_start != NULL);
+        if (argv[arg_pos] == NULL) {
+            usage(argv[0]);
+            exit(1);
+        }
+        if (strlen(argv[arg_pos]) == 0) {
+            usage(argv[0]);
+            exit(1);
+        }
+
+        parse_mode = strtoul(argv[arg_pos], &endptr, 8);
+        if (*endptr != '\0') {
+            usage(argv[0]);
+            exit(1);
+        }
+        if (parse_mode > 0777) {
+            usage(argv[0]);
+            exit(1);
+        }
+
+        rw_socket_mode = parse_mode;
+        arg_pos++;
+
+        if (argc - arg_pos < 1) {
+            usage(argv[0]);
+            exit(1);
+        }
+    }
+#endif
 
 #ifndef _WIN32
     memset(&d, 0, sizeof(d));
@@ -732,9 +874,9 @@ int fuzz_main(int argc, char **argv) {
     RtlSecureZeroMemory(&d, sizeof(d));
 #endif
 
-    d.remote_domid = atoi(argv[1]);
-    if (argc >= 3 && strlen(argv[2]) > 0)
-        d.remote_name = argv[2];
+    d.remote_domid = atoi(argv[arg_pos]);
+    if (argc - arg_pos >= 2 && strlen(argv[arg_pos + 1]) > 0)
+        d.remote_name = argv[arg_pos + 1];
     else
         d.remote_name = NULL;
 

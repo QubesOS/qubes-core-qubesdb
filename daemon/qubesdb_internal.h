@@ -66,6 +66,7 @@ struct client {
     struct client *next;
     client_socket_t fd;
     struct buffer *write_queue;
+    int can_write;
 #endif
 };
 
@@ -82,10 +83,12 @@ struct db_daemon_data {
     HANDLE service_stop_event;
     SRWLOCK lock;
 #else
-    int socket_fd;              /* local server socket */
+    int rw_socket_fd;           /* local server socket, read and write */
+    int ro_socket_fd;           /* local server socket, read-only */
     struct client *client_list; /* local clients */
     /* those two are to avoid removing not own files on termination */
-    int socket_ino;             /* socket file inode number */
+    int rw_socket_ino;          /* rw socket file inode number */
+    int ro_socket_ino;          /* ro socket file inode number */
     int pidfile_ino;            /* pidfile inode number */
 #endif
     struct qubesdb *db;         /* database */
