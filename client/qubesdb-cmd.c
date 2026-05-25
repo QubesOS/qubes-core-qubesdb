@@ -287,7 +287,7 @@ int main(int argc, char **argv) {
     int last_optind;
     qdb_handle_t h;
 
-    if ((cmd_argv0=strchr(argv[0], '-'))) {
+    if ((cmd_argv0=strrchr(argv[0], '-'))) {
         cmd_argv0++;
         do_cmd = parse_cmd(cmd_argv0);
     }
