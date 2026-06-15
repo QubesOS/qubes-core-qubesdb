@@ -65,7 +65,7 @@ Requires:   qubes-db-libs
 Python3 bindings for QubesDB
 
 %prep
-%setup -q 
+%setup -q
 
 %build
 %{?set_build_flags}

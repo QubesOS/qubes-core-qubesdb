@@ -10,7 +10,7 @@ db-daemon_fuzzer: buffer.o db-cmds.o db-core.o db-daemon.o db-daemon_fuzzer.o
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LIB_FUZZING_ENGINE)
 
 db-daemon_fuzzer_seed_corpus.zip: seed-corpus/*
-	zip -q -r $@ seed-corpus	
+	zip -q -r $@ seed-corpus
 
 buffer.o: ../daemon/buffer.c
 	$(CC) $(CFLAGS) -o $@ -c $^
