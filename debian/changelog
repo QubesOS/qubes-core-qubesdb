@@ -1,3 +1,18 @@
+qubesdb (4.3.3-1) unstable; urgency=medium
+
+  [ Marek Marczykowski-Górecki ]
+  * client: improve resolving qubesdb-cmd command
+
+  [ Rafał Wojdyła ]
+  * windows: fix local clean script
+  * windows: don't use local .artifacts dir
+
+  [ Aaron Rainbolt ]
+  * Remove trailing spaces
+  * Allow restricting qubesdb write acccess on Linux
+
+ -- Marek Marczykowski-Górecki <marmarek@invisiblethingslab.com>  Tue, 16 Jun 2026 00:29:58 +0200
+
 qubesdb (4.3.2-1) unstable; urgency=medium
 
   [ Rafał Wojdyła ]
