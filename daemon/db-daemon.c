@@ -46,6 +46,40 @@ mode_t rw_socket_mode = 0666;
 
 int init_vchan(struct db_daemon_data *d);
 
+static int wait_for_full_db_sync(struct db_daemon_data *d) {
+#ifdef _WIN32
+    HANDLE wait_objects[2];
+#endif
+    while (d->multiread_requested) {
+        int handle_ret;
+#ifdef _WIN32
+        AcquireSRWLockExclusive(&d->lock);
+#endif
+        handle_ret = handle_vchan_data(d);
+#ifdef _WIN32
+        ReleaseSRWLockExclusive(&d->lock);
+#endif
+        if (!handle_ret)
+            return 0;
+        if (handle_ret == 2) {
+            /* A partial response, or no response yet: wait for new data. */
+            if (!libvchan_is_open(d->vchan))
+                return 0;
+#ifdef _WIN32
+            wait_objects[0] = d->service_stop_event;
+            wait_objects[1] = libvchan_fd_for_select(d->vchan);
+            if (WaitForMultipleObjects(2, wait_objects, FALSE, INFINITE)
+                    != WAIT_OBJECT_0 + 1)
+                return 0;
+#else
+            if (libvchan_wait(d->vchan) < 0)
+                return 0;
+#endif
+        }
+    }
+    return 1;
+}
+
 #ifndef _WIN32
 int sigterm_received = 0;
 static void sigterm_handler(int s) {
@@ -165,14 +199,9 @@ int mainloop(struct db_daemon_data *d) {
         }
         d->multiread_requested = 1;
         /* wait for complete response */
-        while (d->multiread_requested) {
-            AcquireSRWLockExclusive(&d->lock);
-            if (!handle_vchan_data(d)) {
-                LogError("FATAL: vchan error");
-                ReleaseSRWLockExclusive(&d->lock);
-                return 0;
-            }
-            ReleaseSRWLockExclusive(&d->lock);
+        if (!wait_for_full_db_sync(d)) {
+            LogError("FATAL: vchan error while waiting for DB sync");
+            return 0;
         }
     }
 
@@ -241,13 +270,17 @@ int mainloop(struct db_daemon_data *d) {
 
             if (d->remote_connected || libvchan_is_open(d->vchan)) {
                 while (libvchan_data_ready(d->vchan)) {
+                    int handle_ret;
                     AcquireSRWLockExclusive(&d->lock);
-                    if (!handle_vchan_data(d)) {
+                    handle_ret = handle_vchan_data(d);
+                    ReleaseSRWLockExclusive(&d->lock);
+                    if (!handle_ret) {
                         fprintf(stderr, "FATAL: vchan data processing failed\n");
-                        ReleaseSRWLockExclusive(&d->lock);
                         return 0;
                     }
-                    ReleaseSRWLockExclusive(&d->lock);
+                    /* No progress until the peer writes the rest. */
+                    if (handle_ret == 2)
+                        break;
                 }
             }
             break;
@@ -491,10 +524,14 @@ static int mainloop(struct db_daemon_data *d) {
             if (libvchan_buffer_space(d->vchan))
                 write_vchan_or_client(d, NULL, NULL, 0);
             while (libvchan_data_ready(d->vchan)) {
-                if (!handle_vchan_data(d)) {
+                int handle_ret = handle_vchan_data(d);
+                if (!handle_ret) {
                     fprintf(stderr, "FATAL: vchan data processing failed\n");
                     exit(1);
                 }
+                /* No progress until the peer writes the rest. */
+                if (handle_ret == 2)
+                    break;
             }
         }
 
@@ -981,11 +1018,9 @@ int fuzz_main(int argc, char **argv) {
         }
         d.multiread_requested = 1;
         /* wait for complete response */
-        while (d.multiread_requested) {
-            if (!handle_vchan_data(&d)) {
-                fprintf(stderr, "FATAL: vchan error\n");
-                exit(1);
-            }
+        if (!wait_for_full_db_sync(&d)) {
+            fprintf(stderr, "FATAL: vchan error while waiting for DB sync\n");
+            exit(1);
         }
     }
 
