@@ -472,22 +472,23 @@ qdbhandle_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static int
-qdbhandle_init(QdbHandle *self, PyObject *args)
+qdbhandle_init(QdbHandle *self, PyObject *args, PyObject *kwds)
 {
     char *vmname = NULL;
+    static char *keywords[] = {"vmname", NULL};
 
-    if (!PyArg_ParseTuple(args, "|s", &vmname))
-        goto fail;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|s", keywords, &vmname))
+        return -1;
 
+    if (self->qdb)
+        qdb_close(self->qdb);
     self->qdb = qdb_open(vmname);
-    if (!self->qdb)
-        goto fail;
+    if (!self->qdb) {
+        PyErr_SetFromErrno(qdb_error);
+        return -1;
+    }
 
     return 0;
-
- fail:
-    PyErr_SetFromErrno(qdb_error);
-    return -1;
 }
 
 static void qdbhandle_dealloc(QdbHandle *self)
