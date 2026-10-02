@@ -242,7 +242,12 @@ static int cmd_watch(qdb_handle_t h, int argc, char **args) {
                 fprintf(stderr, "Failed to read watch\n");
             return 1;
         }
-        printf("%s\n", fired_watch);
+        if (printf("%s\n", fired_watch) < 0 || fflush(stdout) == EOF) {
+            perror("watch output");
+            free(fired_watch);
+            return 1;
+        }
+        free(fired_watch);
     }
 
     return 0;
