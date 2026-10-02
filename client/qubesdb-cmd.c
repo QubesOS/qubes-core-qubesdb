@@ -85,14 +85,24 @@ static int cmd_read(qdb_handle_t h, int argc, char **args, char *default_value) 
                 else
                     is_enoent = 1;
             }
-        } else if (!value) {
-            anything_failed |= qdb_watch(h, args[i]) != 1;
-            while (!(value = qdb_read(h, args[i], NULL))) {
-                if ((path = qdb_read_watch(h))) {
+        } else if (!value && errno == ENOENT) {
+            if (!qdb_watch(h, args[i])) {
+                anything_failed = 1;
+            } else {
+                while (!(value = qdb_read(h, args[i], NULL))) {
+                    if (errno != ENOENT) {
+                        anything_failed = 1;
+                        break;
+                    }
+                    path = qdb_read_watch(h);
+                    if (!path) {
+                        anything_failed = 1;
+                        break;
+                    }
                     free(path);
-                } else {
-                    anything_failed = 1;
                 }
+                if (!qdb_unwatch(h, args[i]))
+                    anything_failed = 1;
             }
             read_succeeded = value != NULL;
         }
