@@ -469,13 +469,11 @@ static int handle_rm(struct db_daemon_data *d, struct client *client,
     }
 
     if (!qubesdb_remove(d->db, hdr->path)) {
-        hdr->type = QDB_RESP_ERROR_NOENT;
+        /* A replicated removal may arrive after a local removal of the
+         * same key. Both sides already agree on the resulting state. */
+        hdr->type = client ? QDB_RESP_ERROR_NOENT : QDB_RESP_OK;
         hdr->data_len = 0;
         if (!write_vchan_or_client(d, client, (char*)hdr, sizeof(*hdr)))
-            return 0;
-        /* failed rm received from vchan is fatal - means some database
-         * de-synchronization */
-        if (client == NULL)
             return 0;
     } else {
         if (client != NULL && d->remote_connected) {
