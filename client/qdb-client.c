@@ -91,9 +91,11 @@ static int connect_to_daemon(struct qdb_handle *qh) {
     if (status != ERROR_SUCCESS)
     {
         // win_perror2(status, "connect to server");
+        qh->connected = 0;
         return 0;
     }
 
+    qh->connected = 1;
     return 1;
 }
 
@@ -148,12 +150,14 @@ static int connect_to_daemon(struct qdb_handle *qh) {
 
 success:
     qh->fd = fd;
+    qh->connected = 1;
     return 1;
 
 error:
     if (fd >= 0)
         close(fd);
     qh->fd = -1;
+    qh->connected = 0;
     return 0;
 }
 
@@ -272,7 +276,6 @@ qdb_handle_t qdb_open(char *vmname) {
 
     if (!connect_to_daemon(h))
         goto error;
-    h->connected = 1;
 
     h->watch_list = NULL;
 
@@ -334,6 +337,7 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
                 h->read_pipe = INVALID_HANDLE_VALUE;
 #else
                 close(h->fd);
+                h->fd = -1;
 #endif
                 errno = EPIPE;
             }
