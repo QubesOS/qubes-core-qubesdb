@@ -74,7 +74,10 @@ static int cmd_read(qdb_handle_t h, int argc, char **args, char *default_value) 
         exit(1);
     }
     for (i=0; i < argc; i++) {
+        int read_succeeded;
+
         value = qdb_read(h, args[i], NULL);
+        read_succeeded = value != NULL;
         if (!opt_wait) {
             if (!value && errno == ENOENT) {
                 if (default_value)
@@ -91,6 +94,7 @@ static int cmd_read(qdb_handle_t h, int argc, char **args, char *default_value) 
                     anything_failed = 1;
                 }
             }
+            read_succeeded = value != NULL;
         }
         if (value) {
             if (opt_fullpath)
@@ -103,7 +107,7 @@ static int cmd_read(qdb_handle_t h, int argc, char **args, char *default_value) 
             if (!is_enoent)
                 anything_failed = 1;
         }
-        if (opt_rm) {
+        if (opt_rm && read_succeeded) {
             if (qdb_rm(h, args[i]) != 1)
                 anything_failed = 1;
         }
