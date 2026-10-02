@@ -182,18 +182,15 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr, void *dat
             /* try to reconnect */
             CloseHandle(h->read_pipe);
             CloseHandle(h->write_pipe);
-            if (!connect_to_daemon(h))
-            /* FIXME: register watches again */
+            if (!connect_to_daemon(h)) {
+                /* FIXME: register watches again */
                 /* reconnect failed */
                 return 0;
-            else {
-                /* try again */
-                if (!QioWriteBuffer(h->write_pipe, hdr, sizeof(*hdr))) {
-                    win_perror("write to daemon");
-                    return 0;
-                }
-                else
-                    return 1;
+            }
+            /* try again, then send the payload below */
+            if (!QioWriteBuffer(h->write_pipe, hdr, sizeof(*hdr))) {
+                win_perror("write to daemon");
+                return 0;
             }
         } else {
             /* other write error */
@@ -241,13 +238,10 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
                 h->connected = 0;
                 errno = EPIPE;
                 return 0;
-            } else {
-                /* try again */
-                if (write(h->fd, hdr, sizeof(*hdr)) < (int)sizeof(*hdr))
-                    return 0;
-                else
-                    return 1;
             }
+            /* try again, then send the payload below */
+            if (write(h->fd, hdr, sizeof(*hdr)) < (int)sizeof(*hdr))
+                return 0;
         } else {
             /* other write error */
             perror("write to daemon");
