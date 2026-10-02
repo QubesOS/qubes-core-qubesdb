@@ -519,6 +519,16 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
     return ret;
 }
 
+static void free_multiread_entries(char **entries, int count) {
+    int i;
+
+    for (i = 0; i < count; i++) {
+        free(entries[2*i]);
+        free(entries[2*i+1]);
+    }
+    free(entries);
+}
+
 char **qdb_multiread(qdb_handle_t h, char *path,
         unsigned int **values_len, unsigned int *list_len) {
     struct qdb_hdr hdr;
@@ -563,11 +573,16 @@ char **qdb_multiread(qdb_handle_t h, char *path,
     /* receive entries (QDB_RESP_MULTIREAD messages) */
     while (1) {
         if (!get_response(h, &hdr)) {
-            free(ret);
+            free_multiread_entries(ret, count);
             free(len_ret);
             return NULL;
         }
-        assert(hdr.type == QDB_RESP_MULTIREAD);
+        if (hdr.type != QDB_RESP_MULTIREAD) {
+            errno = hdr.type == QDB_RESP_ERROR ? EINVAL : EPROTO;
+            free_multiread_entries(ret, count);
+            free(len_ret);
+            return NULL;
+        }
         if (!hdr.path[0])
             /* end of list */
             break;
@@ -575,7 +590,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
         /* +1 for terminating \0 */
         value = malloc(hdr.data_len+1);
         if (!value) {
-            free(ret);
+            free_multiread_entries(ret, count);
             free(len_ret);
             return NULL;
         }
@@ -589,7 +604,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
             if (read_ret <= 0) {
 #endif
                 free(value);
-                free(ret);
+                free_multiread_entries(ret, count);
                 free(len_ret);
                 return NULL;
             }
@@ -601,7 +616,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
          * Note that count is still unchanged */
         ret2 = realloc(ret, 2*(count+2)*sizeof(char*));
         if (!ret2) {
-            free(ret);
+            free_multiread_entries(ret, count);
             free(value);
             free(len_ret);
             return NULL;
@@ -613,7 +628,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
             if (!len_ret2) {
                 free(len_ret);
                 free(value);
-                free(ret);
+                free_multiread_entries(ret, count);
                 return NULL;
             }
             len_ret = len_ret2;
@@ -621,6 +636,12 @@ char **qdb_multiread(qdb_handle_t h, char *path,
 
         /* first path */
         ret[2*count] = strdup(hdr.path);
+        if (!ret[2*count]) {
+            free(value);
+            free_multiread_entries(ret, count);
+            free(len_ret);
+            return NULL;
+        }
         /* then data */
         ret[2*count+1] = value;
         /* and data len if requested */
