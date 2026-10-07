@@ -196,6 +196,19 @@ static PyObject *qdbpy_list(QdbHandle *self, PyObject *args)
 	"Raises qubesdb.Error on error.\n"			\
 	"\n"
 
+static void free_multiread_values(char **values, unsigned int count,
+                                  unsigned int *values_len)
+{
+    unsigned int i;
+
+    for (i = 0; i < count; i++) {
+        free(values[2*i]);
+        free(values[2*i+1]);
+    }
+    free(values);
+    free(values_len);
+}
+
 static PyObject *qdbpy_multiread(QdbHandle *self, PyObject *args)
 {
     qdb_handle_t qdb;
@@ -215,19 +228,26 @@ static PyObject *qdbpy_multiread(QdbHandle *self, PyObject *args)
     if (values) {
         unsigned int i;
         PyObject *val = PyDict_New();
-        for (i = 0; i < list_len; i++) {
-            PyDict_SetItemString(val,
-                    values[2*i],
-#if PY_VERSION_HEX >= 0x03000000
-                    PyBytes_FromStringAndSize(values[2*i+1], values_len[i]));
-#else
-                    PyString_FromStringAndSize(values[2*i+1], values_len[i]));
-#endif
-            free(values[2*i]);
-            free(values[2*i+1]);
+        if (!val) {
+            free_multiread_values(values, list_len, values_len);
+            return NULL;
         }
-        free(values);
-        free(values_len);
+        for (i = 0; i < list_len; i++) {
+            PyObject *item;
+#if PY_VERSION_HEX >= 0x03000000
+            item = PyBytes_FromStringAndSize(values[2*i+1], values_len[i]);
+#else
+            item = PyString_FromStringAndSize(values[2*i+1], values_len[i]);
+#endif
+            if (!item || PyDict_SetItemString(val, values[2*i], item) < 0) {
+                Py_XDECREF(item);
+                Py_DECREF(val);
+                free_multiread_values(values, list_len, values_len);
+                return NULL;
+            }
+            Py_DECREF(item);
+        }
+        free_multiread_values(values, list_len, values_len);
         return val;
     }
     else {
@@ -472,22 +492,23 @@ qdbhandle_new(PyTypeObject *type, PyObject *args, PyObject *kwds)
 }
 
 static int
-qdbhandle_init(QdbHandle *self, PyObject *args)
+qdbhandle_init(QdbHandle *self, PyObject *args, PyObject *kwds)
 {
     char *vmname = NULL;
+    static char *keywords[] = {"vmname", NULL};
 
-    if (!PyArg_ParseTuple(args, "|s", &vmname))
-        goto fail;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|s", keywords, &vmname))
+        return -1;
 
+    if (self->qdb)
+        qdb_close(self->qdb);
     self->qdb = qdb_open(vmname);
-    if (!self->qdb)
-        goto fail;
+    if (!self->qdb) {
+        PyErr_SetFromErrno(qdb_error);
+        return -1;
+    }
 
     return 0;
-
- fail:
-    PyErr_SetFromErrno(qdb_error);
-    return -1;
 }
 
 static void qdbhandle_dealloc(QdbHandle *self)
