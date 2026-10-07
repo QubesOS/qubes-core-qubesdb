@@ -134,9 +134,25 @@ int LLVMFuzzerTestOneInput(const uint8_t *Data, size_t Size) {
 	d.remote_name = "test";
 	d.db = qubesdb_init(write_client_buffered);
 	d.vchan = (libvchan_t *) 1; // any not-null pointer is needed
+	d.vchan_buffer = buffer_create();
+	d.vchan_pending_hdr.type = QDB_INVALID_CMD;
+	assert(d.db && d.vchan_buffer);
 
-	while (fuzz_size && handle_vchan_data(&d) ) ;
+	while (fuzz_size) {
+		int paused = vchan_requests_paused(&d);
+		int ret = handle_vchan_data(&d);
+		if (!ret)
+			break;
+		if (!write_vchan_or_client(&d, NULL, NULL, 0))
+			break;
+		/* There is no producer to complete a partial input message. */
+		if (ret == 2 && !paused)
+			break;
+	}
 
+	clear_vchan_sync(&d);
+	buffer_free(d.vchan_reply_buffer);
+	buffer_free(d.vchan_buffer);
 	qubesdb_destroy(d.db);
 
 	return 0;

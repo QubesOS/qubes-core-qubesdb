@@ -149,15 +149,79 @@ static int vchan_write_nonblock(libvchan_t *vchan, char *buf, size_t size) {
     return ret;
 }
 
+int vchan_requests_paused(struct db_daemon_data *d) {
+#ifdef _WIN32
+    /* Windows runs the guest daemon; the bounded queue is on dom0. */
+    (void)d;
+    return 0;
+#else
+    return d->remote_name && d->vchan_reply_buffer &&
+        buffer_datacount(d->vchan_reply_buffer) + sizeof(struct qdb_hdr) >
+            VCHAN_BUFFER_HIGH_WATER;
+#endif
+}
+
+#ifndef _WIN32
+/* Guest replies must have their own space even when local replication is full.
+ * Also reserve room for the next snapshot chunk while sync is active. */
+static int vchan_queue_limit(struct db_daemon_data *d) {
+    return VCHAN_BUFFER_LIMIT - VCHAN_BUFFER_HIGH_WATER -
+        (d->vchan_sync_buffer ? VCHAN_BUFFER_HIGH_WATER : 0);
+}
+#endif
+
+static int queue_output(struct db_daemon_data *d, struct client *c,
+        struct buffer *queue, char *data, int len) {
+    if (!len)
+        return 1;
+#ifndef _WIN32
+    if (!c && d->remote_name)
+        return buffer_append_limited(queue, data, len, vchan_queue_limit(d));
+#else
+    (void)d;
+    (void)c;
+#endif
+    return buffer_append(queue, data, len);
+}
+
+/* Allocate space for the complete command before changing the database.
+ * A full replication queue must not drop a successful write or removal. */
+static int reserve_vchan_update(struct db_daemon_data *d, struct client *c,
+        struct qdb_hdr *hdr) {
+#ifndef _WIN32
+    if (c && d->remote_name && d->remote_connected)
+        return buffer_reserve_limited(d->vchan_buffer,
+                sizeof(*hdr) + hdr->data_len, vchan_queue_limit(d));
+#endif
+    return 1;
+}
+
+static int replicate_vchan_update(struct db_daemon_data *d,
+        struct qdb_hdr *hdr, char *data) {
+#ifndef _WIN32
+    if (d->remote_name) {
+        /* reserve_vchan_update() has already allocated the whole command.
+         * Append before flushing, which can shrink an emptied buffer.
+         * Then attempt a nonblocking flush, preserving snapshot order,
+         * so an idle connection does not wait for the next poll timeout. */
+        return queue_output(d, NULL, d->vchan_buffer, (char *)hdr,
+                sizeof(*hdr)) &&
+            queue_output(d, NULL, d->vchan_buffer, data, hdr->data_len) &&
+            write_vchan_or_client(d, NULL, NULL, 0);
+    }
+#endif
+    return write_vchan_or_client(d, NULL, (char *)hdr, sizeof(*hdr)) &&
+        write_vchan_or_client(d, NULL, data, hdr->data_len);
+}
+
 /* write to either client given by fd parameter or vchan if
  * fd == NULL
  * writes could be buffered for vchan, or if client FD is set to non-blocking
  * mode
  */
-int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
-        char *data, int data_len) {
+static int write_buffered(struct db_daemon_data *d, struct client *c,
+        struct buffer *write_queue, char *data, int data_len) {
     int ret, count;
-    struct buffer *write_queue = NULL;
     int buf_datacount;
 
     if (c == NULL) {
@@ -165,11 +229,6 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         if (!d->vchan)
             /* if vchan not connected, just do nothing */
             return 1;
-        write_queue = d->vchan_buffer;
-    } else {
-#ifndef _WIN32
-        write_queue = c->write_queue;
-#endif
     }
 
 #ifdef _WIN32
@@ -193,8 +252,7 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 /* receiver doesn't have space for more data,
                  * buffer actual requested data and exit */
-                buffer_append(write_queue, data, data_len);
-                return 1;
+                return queue_output(d, c, write_queue, data, data_len);
             }
             perror("vchan/client write");
             return 0;
@@ -214,8 +272,8 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
                 /* receiver doesn't have space for more data,
                  * buffer remaining requested data and exit */
-                buffer_append(write_queue, data+count, data_len-count);
-                return 1;
+                return queue_output(d, c, write_queue,
+                        data+count, data_len-count);
             }
             perror("vchan/client write");
             return 0;
@@ -223,6 +281,161 @@ int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         count += ret;
     }
     return 1;
+}
+
+#ifndef _WIN32
+/* Dom0 queues complete packets. Waiting for space for the whole packet lets
+ * replies take priority without splicing them into a command's payload.
+ * Every packet fits in the minimum vchan ring (4 KiB). */
+static int flush_vchan_packets(struct db_daemon_data *d, struct buffer *queue,
+        int commands) {
+    while (buffer_datacount(queue)) {
+        struct qdb_hdr hdr;
+        int size, ret;
+
+        /* Consume the guest's stream before issuing more commands. A request
+         * can precede its acknowledgments, and older guests cannot queue RM
+         * replies when their ring fills. Replies and sync need no reply. */
+        if (commands && (libvchan_data_ready(d->vchan) ||
+                    d->vchan_pending_hdr.type != QDB_INVALID_CMD))
+            break;
+        assert(buffer_datacount(queue) >= sizeof(hdr));
+        memcpy(&hdr, buffer_data(queue), sizeof(hdr));
+        size = sizeof(hdr) + hdr.data_len;
+        assert(size <= buffer_datacount(queue));
+        if (libvchan_buffer_space(d->vchan) < size)
+            break;
+        ret = libvchan_write(d->vchan, buffer_data(queue), size);
+        if (ret != size) {
+            fprintf(stderr, "vchan packet write failed\n");
+            return 0;
+        }
+        buffer_substract(queue, size);
+    }
+    return 1;
+}
+#endif
+
+void clear_vchan_sync(struct db_daemon_data *d) {
+    if (d->vchan_sync)
+        qubesdb_destroy(d->vchan_sync);
+    buffer_free(d->vchan_sync_buffer);
+    d->vchan_sync = NULL;
+    d->vchan_sync_next = NULL;
+    d->vchan_sync_buffer = NULL;
+}
+
+#ifndef _WIN32
+static int start_vchan_sync(struct db_daemon_data *d, char *path) {
+    struct qubesdb *snapshot = qubesdb_init(NULL);
+    struct buffer *updates;
+    struct qubesdb_entry *entry;
+    size_t path_len = strlen(path);
+
+    if (!snapshot)
+        return 0;
+    /* Copy in reverse order to keep insertion into the snapshot linear.
+     * Local clients may change the live database between output chunks. */
+    for (entry = d->db->entries->prev; entry != d->db->entries;
+            entry = entry->prev) {
+        if (strncmp(entry->path, path, path_len) == 0 &&
+                !qubesdb_write(snapshot, entry->path,
+                    entry->value, entry->value_len)) {
+            qubesdb_destroy(snapshot);
+            return 0;
+        }
+    }
+    updates = buffer_create();
+    if (!updates) {
+        qubesdb_destroy(snapshot);
+        return 0;
+    }
+    d->vchan_sync = snapshot;
+    d->vchan_sync_forward = path_len != 0;
+    d->vchan_sync_next = d->vchan_sync_forward ?
+        snapshot->entries->next : snapshot->entries->prev;
+    /* Earlier updates precede the snapshot; later updates wait until its
+     * end marker has been sent. Replies use an independent queue. */
+    d->vchan_sync_buffer = d->vchan_buffer;
+    d->vchan_buffer = updates;
+    return 1;
+}
+
+static int flush_vchan_sync(struct db_daemon_data *d) {
+    struct buffer *queue = d->vchan_sync_buffer;
+
+    if (!buffer_datacount(queue) && d->vchan_sync) {
+        while (d->vchan_sync) {
+            struct qubesdb_entry *entry = d->vchan_sync_next;
+            struct qdb_hdr hdr = { .type = QDB_RESP_MULTIREAD };
+            int last = entry == d->vchan_sync->entries;
+
+            if (!last) {
+                strcpy(hdr.path, entry->path);
+                hdr.data_len = entry->value_len;
+            }
+            if (buffer_datacount(queue) + sizeof(hdr) + hdr.data_len >
+                    VCHAN_BUFFER_HIGH_WATER)
+                break;
+            if (!buffer_append_limited(queue, (char *)&hdr, sizeof(hdr),
+                        VCHAN_BUFFER_HIGH_WATER) ||
+                    (!last && !buffer_append_limited(queue, entry->value,
+                        entry->value_len, VCHAN_BUFFER_HIGH_WATER)))
+                return 0;
+            if (last) {
+                qubesdb_destroy(d->vchan_sync);
+                d->vchan_sync = NULL;
+                d->vchan_sync_next = NULL;
+            } else {
+                d->vchan_sync_next = d->vchan_sync_forward ?
+                    entry->next : entry->prev;
+            }
+        }
+    }
+    if (!flush_vchan_packets(d, queue, 0))
+        return 0;
+    if (!d->vchan_sync && !buffer_datacount(queue)) {
+        buffer_free(queue);
+        d->vchan_sync_buffer = NULL;
+    }
+    return 1;
+}
+#endif
+
+int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
+        char *data, int data_len) {
+#ifndef _WIN32
+    if (c)
+        return write_buffered(d, c, c->write_queue, data, data_len);
+    if (d->remote_name) {
+        if (!d->vchan)
+            return 1;
+        if (data_len) {
+            if (!d->vchan_reply_buffer)
+                d->vchan_reply_buffer = buffer_create();
+            if (!d->vchan_reply_buffer ||
+                    !buffer_append_limited(d->vchan_reply_buffer, data,
+                        data_len, VCHAN_BUFFER_HIGH_WATER))
+                return 0;
+        }
+        /* A full replication queue must not prevent accepting a guest
+         * request and reaching the acknowledgments behind it. Send its
+         * reply first, releasing reply capacity even when input is paused. */
+        if (d->vchan_reply_buffer &&
+                !flush_vchan_packets(d, d->vchan_reply_buffer, 0))
+            return 0;
+        if (d->vchan_reply_buffer && buffer_datacount(d->vchan_reply_buffer))
+            return 1;
+        if (d->vchan_sync_buffer) {
+            if (!flush_vchan_sync(d))
+                return 0;
+            if (d->vchan_sync_buffer)
+                return 1;
+        }
+        return flush_vchan_packets(d, d->vchan_buffer, 1);
+    }
+#endif
+    return write_buffered(d, c, d->vchan_buffer, data, data_len);
 }
 
 static int read_vchan_or_client(struct db_daemon_data *d, struct client *c,
@@ -416,6 +629,12 @@ static int handle_write(struct db_daemon_data *d, struct client *client,
     }
     data = untrusted_data;
 
+    if (!reserve_vchan_update(d, client, hdr)) {
+        hdr->type = QDB_RESP_ERROR;
+        hdr->data_len = 0;
+        return write_vchan_or_client(d, client, (char *)hdr, sizeof(*hdr));
+    }
+
     if (!qubesdb_write(d->db, hdr->path, data, hdr->data_len)) {
         fprintf(stderr, "failed to write path %s\n", hdr->path);
         hdr->type = QDB_RESP_ERROR;
@@ -425,10 +644,8 @@ static int handle_write(struct db_daemon_data *d, struct client *client,
     } else {
         if (client != NULL && d->remote_connected) {
             /* if write was from local client, duplicate it through vchan */
-            write_vchan_or_client(d, NULL,
-                    (char*)hdr, sizeof(*hdr));
-            write_vchan_or_client(d, NULL,
-                    data, hdr->data_len);
+            if (!replicate_vchan_update(d, hdr, data))
+                return 0;
         }
         hdr->type = QDB_RESP_OK;
         hdr->data_len = 0;
@@ -468,6 +685,11 @@ static int handle_rm(struct db_daemon_data *d, struct client *client,
         return discard_data_and_send_error(d, client, hdr);
     }
 
+    if (!reserve_vchan_update(d, client, hdr)) {
+        hdr->type = QDB_RESP_ERROR;
+        return write_vchan_or_client(d, client, (char *)hdr, sizeof(*hdr));
+    }
+
     if (!qubesdb_remove(d->db, hdr->path)) {
         /* A replicated removal may arrive after a local removal of the
          * same key. Both sides already agree on the resulting state. */
@@ -478,8 +700,8 @@ static int handle_rm(struct db_daemon_data *d, struct client *client,
     } else {
         if (client != NULL && d->remote_connected) {
             /* if rm was from local client, duplicate it through vchan */
-            write_vchan_or_client(d, NULL,
-                    (char*)hdr, sizeof(*hdr));
+            if (!replicate_vchan_update(d, hdr, NULL))
+                return 0;
         }
         hdr->type = QDB_RESP_OK;
         hdr->data_len = 0;
@@ -560,6 +782,11 @@ static int handle_multiread(struct db_daemon_data *d, struct client *client,
     search_path_len = (int)strlen(search_path);
 
     hdr->type = QDB_RESP_MULTIREAD;
+
+#ifndef _WIN32
+    if (!client && d->remote_name)
+        return start_vchan_sync(d, search_path);
+#endif
 
     if (search_path_len) {
         db_entry = qubesdb_search(d->db, search_path, 0);
@@ -688,8 +915,8 @@ static int handle_vchan_multiread_resp(struct db_daemon_data *d, struct qdb_hdr 
  * function. Any error in processing vchan data should be considered fatal.
  * @param d Daemon global data
  * @return 1 on success (message handled and responded), 0 if error
- *           occured and client should be disconnected, 2 if message not yet
- *           handled (waiting for more data)
+ *           occurred and client should be disconnected, 2 if processing
+ *           should wait for more input or space in the output queue
  */
 int handle_vchan_data(struct db_daemon_data *d) {
     struct qdb_hdr untrusted_hdr;
@@ -714,6 +941,27 @@ int handle_vchan_data(struct db_daemon_data *d) {
         hdr = d->vchan_pending_hdr;
         d->vchan_pending_hdr.type = QDB_INVALID_CMD;
     }
+
+    /* Throttle only on reply capacity. Local replication has a separate
+     * budget: otherwise a paused request would hide acknowledgments behind
+     * it and could fill an older guest's response ring. Reserve the reply
+     * before applying the command, including when replication is full. */
+#ifndef _WIN32
+    if (d->remote_name &&
+            (hdr.type == QDB_CMD_WRITE || hdr.type == QDB_CMD_RM ||
+             hdr.type == QDB_CMD_MULTIREAD)) {
+        if (vchan_requests_paused(d)) {
+            d->vchan_pending_hdr = hdr;
+            return 2;
+        }
+        if (!d->vchan_reply_buffer)
+            d->vchan_reply_buffer = buffer_create();
+        if (!d->vchan_reply_buffer ||
+                !buffer_reserve_limited(d->vchan_reply_buffer, sizeof(hdr),
+                    VCHAN_BUFFER_HIGH_WATER))
+            return 0;
+    }
+#endif
 
     /* This check is correct only because the whole message (up to
      * QDB_MAX_DATA) can fit into a vchan buffer. Otherwise it could cause a
