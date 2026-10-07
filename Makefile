@@ -17,10 +17,14 @@ all:
 	$(MAKE) -C client
 	$(MAKE) -C python
 
+test:
+	$(MAKE) -C tests test
+
 clean:
 	$(MAKE) -C daemon clean
 	$(MAKE) -C client clean
 	$(MAKE) -C python clean
+	$(MAKE) -C tests clean
 
 install:
 	$(MAKE) -C daemon install
