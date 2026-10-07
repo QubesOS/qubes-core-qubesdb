@@ -93,10 +93,20 @@ static void sigterm_handler(int s) {
  */
 static int add_client(struct db_daemon_data *d, client_socket_t c, int is_rw_socket) {
     struct client *client;
+    size_t count = 0;
+
+    for (client = d->client_list; client; client = client->next)
+        count++;
+    if (count >= MAX_CLIENTS) {
+        fprintf(stderr, "maximum number of clients reached\n");
+        close(c);
+        return 1;
+    }
 
     client = malloc(sizeof(*client));
     if (!client) {
         fprintf(stderr, "ERROR: cannot allocate memory for new client\n");
+        close(c);
         return 0;
     }
     client->fd = c;
@@ -106,6 +116,7 @@ static int add_client(struct db_daemon_data *d, client_socket_t c, int is_rw_soc
     if (!client->write_queue) {
         fprintf(stderr, "ERROR: cannot allocate memory for new client buffer\n");
         free(client);
+        close(c);
         return 0;
     }
     client->next = d->client_list;
