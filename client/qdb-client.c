@@ -91,9 +91,11 @@ static int connect_to_daemon(struct qdb_handle *qh) {
     if (status != ERROR_SUCCESS)
     {
         // win_perror2(status, "connect to server");
+        qh->connected = 0;
         return 0;
     }
 
+    qh->connected = 1;
     return 1;
 }
 
@@ -148,12 +150,14 @@ static int connect_to_daemon(struct qdb_handle *qh) {
 
 success:
     qh->fd = fd;
+    qh->connected = 1;
     return 1;
 
 error:
     if (fd >= 0)
         close(fd);
     qh->fd = -1;
+    qh->connected = 0;
     return 0;
 }
 
@@ -182,18 +186,15 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr, void *dat
             /* try to reconnect */
             CloseHandle(h->read_pipe);
             CloseHandle(h->write_pipe);
-            if (!connect_to_daemon(h))
-            /* FIXME: register watches again */
+            if (!connect_to_daemon(h)) {
+                /* FIXME: register watches again */
                 /* reconnect failed */
                 return 0;
-            else {
-                /* try again */
-                if (!QioWriteBuffer(h->write_pipe, hdr, sizeof(*hdr))) {
-                    win_perror("write to daemon");
-                    return 0;
-                }
-                else
-                    return 1;
+            }
+            /* try again, then send the payload below */
+            if (!QioWriteBuffer(h->write_pipe, hdr, sizeof(*hdr))) {
+                win_perror("write to daemon");
+                return 0;
             }
         } else {
             /* other write error */
@@ -241,13 +242,10 @@ static int send_command_to_daemon(qdb_handle_t h, struct qdb_hdr *hdr,
                 h->connected = 0;
                 errno = EPIPE;
                 return 0;
-            } else {
-                /* try again */
-                if (write(h->fd, hdr, sizeof(*hdr)) < (int)sizeof(*hdr))
-                    return 0;
-                else
-                    return 1;
             }
+            /* try again, then send the payload below */
+            if (write(h->fd, hdr, sizeof(*hdr)) < (int)sizeof(*hdr))
+                return 0;
         } else {
             /* other write error */
             perror("write to daemon");
@@ -278,7 +276,6 @@ qdb_handle_t qdb_open(char *vmname) {
 
     if (!connect_to_daemon(h))
         goto error;
-    h->connected = 1;
 
     h->watch_list = NULL;
 
@@ -340,6 +337,7 @@ static int get_response(qdb_handle_t h, struct qdb_hdr *hdr) {
                 h->read_pipe = INVALID_HANDLE_VALUE;
 #else
                 close(h->fd);
+                h->fd = -1;
 #endif
                 errno = EPIPE;
             }
@@ -521,6 +519,16 @@ char **qdb_list(qdb_handle_t h, char *path, unsigned int *list_len) {
     return ret;
 }
 
+static void free_multiread_entries(char **entries, int count) {
+    int i;
+
+    for (i = 0; i < count; i++) {
+        free(entries[2*i]);
+        free(entries[2*i+1]);
+    }
+    free(entries);
+}
+
 char **qdb_multiread(qdb_handle_t h, char *path,
         unsigned int **values_len, unsigned int *list_len) {
     struct qdb_hdr hdr;
@@ -565,11 +573,16 @@ char **qdb_multiread(qdb_handle_t h, char *path,
     /* receive entries (QDB_RESP_MULTIREAD messages) */
     while (1) {
         if (!get_response(h, &hdr)) {
-            free(ret);
+            free_multiread_entries(ret, count);
             free(len_ret);
             return NULL;
         }
-        assert(hdr.type == QDB_RESP_MULTIREAD);
+        if (hdr.type != QDB_RESP_MULTIREAD) {
+            errno = hdr.type == QDB_RESP_ERROR ? EINVAL : EPROTO;
+            free_multiread_entries(ret, count);
+            free(len_ret);
+            return NULL;
+        }
         if (!hdr.path[0])
             /* end of list */
             break;
@@ -577,7 +590,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
         /* +1 for terminating \0 */
         value = malloc(hdr.data_len+1);
         if (!value) {
-            free(ret);
+            free_multiread_entries(ret, count);
             free(len_ret);
             return NULL;
         }
@@ -591,7 +604,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
             if (read_ret <= 0) {
 #endif
                 free(value);
-                free(ret);
+                free_multiread_entries(ret, count);
                 free(len_ret);
                 return NULL;
             }
@@ -603,7 +616,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
          * Note that count is still unchanged */
         ret2 = realloc(ret, 2*(count+2)*sizeof(char*));
         if (!ret2) {
-            free(ret);
+            free_multiread_entries(ret, count);
             free(value);
             free(len_ret);
             return NULL;
@@ -615,7 +628,7 @@ char **qdb_multiread(qdb_handle_t h, char *path,
             if (!len_ret2) {
                 free(len_ret);
                 free(value);
-                free(ret);
+                free_multiread_entries(ret, count);
                 return NULL;
             }
             len_ret = len_ret2;
@@ -623,6 +636,12 @@ char **qdb_multiread(qdb_handle_t h, char *path,
 
         /* first path */
         ret[2*count] = strdup(hdr.path);
+        if (!ret[2*count]) {
+            free(value);
+            free_multiread_entries(ret, count);
+            free(len_ret);
+            return NULL;
+        }
         /* then data */
         ret[2*count+1] = value;
         /* and data len if requested */
