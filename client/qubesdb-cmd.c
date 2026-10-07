@@ -74,7 +74,10 @@ static int cmd_read(qdb_handle_t h, int argc, char **args, char *default_value) 
         exit(1);
     }
     for (i=0; i < argc; i++) {
+        int read_succeeded;
+
         value = qdb_read(h, args[i], NULL);
+        read_succeeded = value != NULL;
         if (!opt_wait) {
             if (!value && errno == ENOENT) {
                 if (default_value)
@@ -82,15 +85,26 @@ static int cmd_read(qdb_handle_t h, int argc, char **args, char *default_value) 
                 else
                     is_enoent = 1;
             }
-        } else if (!value) {
-            anything_failed |= qdb_watch(h, args[i]) != 1;
-            while (!(value = qdb_read(h, args[i], NULL))) {
-                if ((path = qdb_read_watch(h))) {
+        } else if (!value && errno == ENOENT) {
+            if (!qdb_watch(h, args[i])) {
+                anything_failed = 1;
+            } else {
+                while (!(value = qdb_read(h, args[i], NULL))) {
+                    if (errno != ENOENT) {
+                        anything_failed = 1;
+                        break;
+                    }
+                    path = qdb_read_watch(h);
+                    if (!path) {
+                        anything_failed = 1;
+                        break;
+                    }
                     free(path);
-                } else {
-                    anything_failed = 1;
                 }
+                if (!qdb_unwatch(h, args[i]))
+                    anything_failed = 1;
             }
+            read_succeeded = value != NULL;
         }
         if (value) {
             if (opt_fullpath)
@@ -103,7 +117,7 @@ static int cmd_read(qdb_handle_t h, int argc, char **args, char *default_value) 
             if (!is_enoent)
                 anything_failed = 1;
         }
-        if (opt_rm) {
+        if (opt_rm && read_succeeded) {
             if (qdb_rm(h, args[i]) != 1)
                 anything_failed = 1;
         }
@@ -228,7 +242,12 @@ static int cmd_watch(qdb_handle_t h, int argc, char **args) {
                 fprintf(stderr, "Failed to read watch\n");
             return 1;
         }
-        printf("%s\n", fired_watch);
+        if (printf("%s\n", fired_watch) < 0 || fflush(stdout) == EOF) {
+            perror("watch output");
+            free(fired_watch);
+            return 1;
+        }
+        free(fired_watch);
     }
 
     return 0;
