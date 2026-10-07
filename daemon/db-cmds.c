@@ -777,7 +777,7 @@ int handle_vchan_data(struct db_daemon_data *d) {
  * @param d Daemon global data
  * @param client Client socket from which handle command
  * @param data Data buffer already received from client. Must be no more than
- *             sizeof(struct qdb_hdr).
+ *             sizeof(struct qdb_hdr). May be NULL when data_len is zero.
  * @param data_len Size of filled buffer in 'data'
  * @return 1 on success (message handled and responded, even if response is
  *           error message), 0 if fatal error occured and client should be
@@ -793,7 +793,8 @@ int handle_client_data(struct db_daemon_data *d, struct client *client,
                 "header size, cannot continue\n");
         exit(1);
     }
-    memcpy(&hdr, data, data_len);
+    if (data_len)
+        memcpy(&hdr, data, data_len);
     if (!read_vchan_or_client(d, client,
                     ((char*)&hdr)+data_len, sizeof(hdr)-data_len)) {
         return 0;
