@@ -27,6 +27,11 @@ typedef int client_socket_t;
 #define MAX_FILE_PATH 256
 #define MAX_CLIENTS 256
 
+/* Reserve separate 64 KiB budgets for guest replies and snapshot chunks.
+ * Bound serialized output without discarding accepted replication commands. */
+#define VCHAN_BUFFER_HIGH_WATER (64 * 1024)
+#define VCHAN_BUFFER_LIMIT (16 * 1024 * 1024)
+
 struct client;
 
 #ifndef _WIN32
@@ -95,6 +100,11 @@ struct db_daemon_data {
     int multiread_requested;    /* have requested multiread, if not - drop such
                                    responses */
     struct buffer *vchan_buffer;/* vchan write buffer */
+    struct buffer *vchan_reply_buffer; /* dom0 replies, ahead of replication */
+    struct qubesdb *vchan_sync; /* stable snapshot while full sync is sent */
+    struct qubesdb_entry *vchan_sync_next;
+    int vchan_sync_forward;    /* prefix multiread uses ascending order */
+    struct buffer *vchan_sync_buffer; /* snapshot output, ahead of updates */
     struct qdb_hdr vchan_pending_hdr; /* retrieved header but data not yet handled */
 };
 
@@ -125,6 +135,8 @@ int handle_client_connect(struct db_daemon_data *d, struct client *client);
 int handle_client_disconnect(struct db_daemon_data *d, struct client *client);
 int write_vchan_or_client(struct db_daemon_data *d, struct client *c,
         char *data, int data_len);
+int vchan_requests_paused(struct db_daemon_data *d);
+void clear_vchan_sync(struct db_daemon_data *d);
 #ifndef _WIN32
 int write_client_buffered(struct client *client, char *buf, size_t len);
 #else
