@@ -3,6 +3,7 @@ VERSION = $(file <version)
 
 help:
 	@echo "make all                   -- compile all binaries"
+	@echo "make test                  -- run unit tests"
 	@echo "make rpms-vm               -- generate binary rpm packages for VM"
 	@echo "make rpms-dom0               -- generate binary rpm packages for Dom0"
 
@@ -17,10 +18,14 @@ all:
 	$(MAKE) -C client
 	$(MAKE) -C python
 
+test:
+	$(MAKE) -C tests test
+
 clean:
 	$(MAKE) -C daemon clean
 	$(MAKE) -C client clean
 	$(MAKE) -C python clean
+	$(MAKE) -C tests clean
 
 install:
 	$(MAKE) -C daemon install
@@ -32,3 +37,5 @@ msi:
 	$(MAKE) -C python install PYTHON_PREFIX_ARG=--prefix=. DESTDIR=python3
 	candle -arch x64 -dversion=$(VERSION) installer.wxs
 	light -o core-qubesdb.msm installer.wixobj
+
+.PHONY: test
