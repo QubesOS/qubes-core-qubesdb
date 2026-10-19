@@ -26,3 +26,6 @@ vm:
     - include/qubesdb-client.h
     lib:
     - windows/vs2022/x64/@CONFIGURATION@/qubesdb-client/qubesdb-client.lib
+    pdb:
+    - windows/vs2022/x64/@CONFIGURATION@/qubesdb-client/qubesdb-client.pdb
+    - windows/vs2022/x64/@CONFIGURATION@/qubesdb-daemon/qubesdb-daemon.pdb
