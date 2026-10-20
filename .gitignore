@@ -10,3 +10,4 @@ deb/
 pkgs/
 /selinux/*.pp
 /selinux/tmp/
+/tests/test_recursive_watch
