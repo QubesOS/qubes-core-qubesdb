@@ -439,9 +439,9 @@ static int handle_write(struct db_daemon_data *d, struct client *client,
     }
 }
 
-/** Handle 'rm' command. Modify the database and send notification to other
- * vchan side (if command received from local client). After modification (and
- * sending response+notification) appropriate watches are fired.
+/** Handle 'rm' command. Remove matching keys and send the command reply,
+ * then fire watches for each removed key. Notify the other vchan side if
+ * the command came from a local client.
  * This command is valid on both client socket and vchan, so input data must be
  * handled with special care.
  * @param d Daemon global data
@@ -455,6 +455,9 @@ static int handle_write(struct db_daemon_data *d, struct client *client,
 /* this command is valid on both client socket and vchan */
 static int handle_rm(struct db_daemon_data *d, struct client *client,
         struct qdb_hdr *hdr) {
+    struct qubesdb_entry *removed;
+    int ret;
+
 #ifndef _WIN32
     if (client != NULL && !client->can_write) {
         fprintf(stderr, "write attempted by read-only client\n");
@@ -468,7 +471,8 @@ static int handle_rm(struct db_daemon_data *d, struct client *client,
         return discard_data_and_send_error(d, client, hdr);
     }
 
-    if (!qubesdb_remove(d->db, hdr->path)) {
+    removed = qubesdb_remove(d->db, hdr->path);
+    if (!removed) {
         /* A replicated removal may arrive after a local removal of the
          * same key. Both sides already agree on the resulting state. */
         hdr->type = client ? QDB_RESP_ERROR_NOENT : QDB_RESP_OK;
@@ -483,9 +487,10 @@ static int handle_rm(struct db_daemon_data *d, struct client *client,
         }
         hdr->type = QDB_RESP_OK;
         hdr->data_len = 0;
-        if (!write_vchan_or_client(d, client, (char*)hdr, sizeof(*hdr)))
-            return 0;
-        qubesdb_fire_watches(d->db, hdr->path);
+        ret = write_vchan_or_client(d, client, (char*)hdr, sizeof(*hdr));
+        /* Notify changes even if replying to the requester failed. */
+        qubesdb_notify_removed(d->db, removed);
+        return ret;
     }
     return 1;
 }

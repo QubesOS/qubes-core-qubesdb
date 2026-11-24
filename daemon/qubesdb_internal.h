@@ -109,8 +109,12 @@ struct qubesdb_entry *qubesdb_insert(struct qubesdb *db, char *path);
 int qubesdb_write(struct qubesdb *db, char *path, char *data, int data_len);
 
 /* if key ends with '/', remove whole directory */
-/* return 1 if anything removed (and should fire watches), 0 otherwise */
-int qubesdb_remove(struct qubesdb *db, char *path);
+/* return detached entries linked by next (values freed), or NULL */
+/* caller must pass the returned list to qubesdb_notify_removed */
+struct qubesdb_entry *qubesdb_remove(struct qubesdb *db, char *path);
+
+/* fire watches for each removed key, then free the detached entries */
+void qubesdb_notify_removed(struct qubesdb *db, struct qubesdb_entry *removed);
 
 int qubesdb_add_watch(struct qubesdb *db, char *path,
         struct client *client);

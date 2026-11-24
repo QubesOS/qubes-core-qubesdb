@@ -154,11 +154,12 @@ int qubesdb_write(struct qubesdb *db, char *path, char *data, int data_len) {
     return 1;
 }
 
-int qubesdb_remove(struct qubesdb *db, char *path) {
+struct qubesdb_entry *qubesdb_remove(struct qubesdb *db, char *path) {
     struct qubesdb_entry *entry;
     struct qubesdb_entry *tmp_entry;
+    struct qubesdb_entry *removed = NULL;
+    struct qubesdb_entry **last_removed = &removed;
     int remove_dir, cmp_len;
-    int anything_removed = 0;
 
     cmp_len = (int)strlen(path);
     /* check if requested whole dir remove */
@@ -172,7 +173,7 @@ int qubesdb_remove(struct qubesdb *db, char *path) {
 
     entry = qubesdb_search(db, path, !remove_dir);
     if (!entry)
-        return 0;
+        return NULL;
     while (entry->next != entry && strncmp(entry->path, path, cmp_len) == 0) {
         tmp_entry = entry;
         entry = entry->next;
@@ -181,10 +182,23 @@ int qubesdb_remove(struct qubesdb *db, char *path) {
         tmp_entry->next->prev = tmp_entry->prev;
         buffer_secure_zero(tmp_entry->value, tmp_entry->value_len);
         free(tmp_entry->value);
-        free(tmp_entry);
-        anything_removed = 1;
+        tmp_entry->value = NULL;
+        /* Retain paths until the caller has sent the command reply. */
+        tmp_entry->next = NULL;
+        *last_removed = tmp_entry;
+        last_removed = &tmp_entry->next;
     }
-    return anything_removed;
+    return removed;
+}
+
+void qubesdb_notify_removed(struct qubesdb *db, struct qubesdb_entry *removed) {
+    while (removed) {
+        struct qubesdb_entry *entry = removed;
+        removed = removed->next;
+        /* Use the deleted key so watches below a removed directory fire. */
+        qubesdb_fire_watches(db, entry->path);
+        free(entry);
+    }
 }
 
 int qubesdb_add_watch(struct qubesdb *db, char *path,
