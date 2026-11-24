@@ -40,6 +40,8 @@ struct buffer {
 struct buffer *buffer_create(void);
 void buffer_free(struct buffer *b);
 int buffer_append(struct buffer *b, char *buf, int size);
+int buffer_reserve_limited(struct buffer *b, int size, int limit);
+int buffer_append_limited(struct buffer *b, char *buf, int size, int limit);
 int buffer_datacount(struct buffer *b);
 char *buffer_data(struct buffer *b);
 void buffer_substract(struct buffer *b, int count);

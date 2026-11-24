@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <errno.h>
+#include <limits.h>
 #include "buffer.h"
 
 struct buffer *buffer_create(void)
@@ -54,30 +56,61 @@ void buffer_free(struct buffer *b) {
     free(b);
 }
 
-// We optimize for buffer_substract(), as it can be called
-// many times; malloc(newsize) in buffer_append() should be rare
-// in normal circumstances.
+/* Keep space for repeated appends, and compact after partial writes. */
+
+int buffer_reserve_limited(struct buffer *b, int size, int limit)
+{
+    size_t needed;
+
+    if (size < 0 || limit < b->data_count || size > limit - b->data_count) {
+        errno = ENOSPC;
+        return 0;
+    }
+    needed = (size_t)b->data_count + size;
+    if (needed + b->data_offset > (size_t)b->buffer_size) {
+        size_t newsize = b->buffer_size;
+        char *newbuf;
+
+        if (needed <= (size_t)b->buffer_size) {
+            memmove(b->buffer, b->buffer + b->data_offset, b->data_count);
+            b->data_offset = 0;
+        } else {
+            while (newsize < needed) {
+                if (newsize > (size_t)limit / 2) {
+                    newsize = limit;
+                    break;
+                }
+                newsize *= 2;
+            }
+            newbuf = malloc(newsize);
+            if (!newbuf) {
+                perror("malloc");
+                return 0;
+            }
+            memcpy(newbuf, b->buffer + b->data_offset, b->data_count);
+            buffer_secure_zero(b->buffer, b->buffer_size);
+            free(b->buffer);
+            b->buffer = newbuf;
+            b->buffer_size = (int)newsize;
+            b->data_offset = 0;
+        }
+    }
+    return 1;
+}
+
+int buffer_append_limited(struct buffer *b, char *buf, int size, int limit)
+{
+    if (!buffer_reserve_limited(b, size, limit))
+        return 0;
+    if (size)
+        memcpy(b->buffer + b->data_offset + b->data_count, buf, size);
+    b->data_count += size;
+    return 1;
+}
 
 int buffer_append(struct buffer *b, char *buf, int size)
 {
-    if (size + b->data_offset + b->data_count > b->buffer_size) {
-        int newsize = b->data_count + size + BUFFER_SIZE_MIN;
-        char *newbuf;
-        newbuf = malloc(newsize);
-        if (!newbuf) {
-            perror("malloc");
-            return 0;
-        }
-        memcpy(newbuf, b->buffer + b->data_offset, b->data_count);
-        buffer_secure_zero(b->buffer, b->buffer_size);
-        free(b->buffer);
-        b->buffer = newbuf;
-        b->buffer_size = newsize;
-        b->data_offset = 0;
-    }
-    memcpy(b->buffer + b->data_offset + b->data_count, buf, size);
-    b->data_count += size;
-    return 1;
+    return buffer_append_limited(b, buf, size, INT_MAX);
 }
 
 int buffer_datacount(struct buffer *b)

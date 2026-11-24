@@ -445,6 +445,8 @@ static size_t fill_fdsets_for_select(struct db_daemon_data *d,
         .events = POLLIN | POLLHUP,
         .revents = 0,
     };
+    /* Keep draining vchan notifications while requests are paused: reads
+     * by the peer also signal space for the next output chunk. */
     fds[2] = (struct pollfd) {
         .fd = d->vchan ? libvchan_fd_for_select(d->vchan) : -1,
         .events = POLLIN | POLLHUP,
@@ -468,13 +470,26 @@ static size_t fill_fdsets_for_select(struct db_daemon_data *d,
     return total_fds;
 }
 
+static void drain_vchan_input(struct db_daemon_data *d) {
+    while (libvchan_data_ready(d->vchan) ||
+            d->vchan_pending_hdr.type != QDB_INVALID_CMD) {
+        int ret = handle_vchan_data(d);
+        if (!ret) {
+            fprintf(stderr, "FATAL: vchan data processing failed\n");
+            exit(1);
+        }
+        if (ret == 2)
+            break;
+    }
+}
+
 static int mainloop(struct db_daemon_data *d) {
     struct client *client;
     int ret;
     static struct pollfd fds[MAX_CLIENTS + 3];
     sigset_t sigterm_mask;
     sigset_t oldmask;
-    struct timespec ts = { 10, 0 };
+    struct timespec ts;
 
     sigemptyset(&sigterm_mask);
     sigaddset(&sigterm_mask, SIGTERM);
@@ -482,6 +497,11 @@ static int mainloop(struct db_daemon_data *d) {
     while (1) {
         size_t current_fd = 3;
         size_t const nfds = fill_fdsets_for_select(d, fds);
+        /* Check for room periodically when a peer has stopped reading. */
+        ts = d->remote_name && (vchan_requests_paused(d) ||
+                d->vchan_sync_buffer || buffer_datacount(d->vchan_buffer)) ?
+            (struct timespec){ 0, 100000000 } :
+            (struct timespec){ 10, 0 };
         assert(nfds >= 3);
         assert(nfds <= MAX_CLIENTS + 3);
 
@@ -531,19 +551,17 @@ static int mainloop(struct db_daemon_data *d) {
                     break;
                 }
             }
+            /* Free the peer's response ring before sending more commands. */
+            drain_vchan_input(d);
             /* trigger pending data write */
-            if (libvchan_buffer_space(d->vchan))
-                write_vchan_or_client(d, NULL, NULL, 0);
-            while (libvchan_data_ready(d->vchan)) {
-                int handle_ret = handle_vchan_data(d);
-                if (!handle_ret) {
-                    fprintf(stderr, "FATAL: vchan data processing failed\n");
-                    exit(1);
-                }
-                /* No progress until the peer writes the rest. */
-                if (handle_ret == 2)
-                    break;
+            if (libvchan_buffer_space(d->vchan) &&
+                    !write_vchan_or_client(d, NULL, NULL, 0)) {
+                fprintf(stderr, "FATAL: vchan output failed\n");
+                exit(1);
             }
+            /* Flushing may have unpaused a command whose header was
+             * already read, even when no further input bytes are pending. */
+            drain_vchan_input(d);
         }
 
         client = d->client_list;
@@ -691,6 +709,9 @@ static int init_server_socket(struct db_daemon_data *d) {
 #endif /* !_WIN32 */
 
 int init_vchan(struct db_daemon_data *d) {
+    clear_vchan_sync(d);
+    buffer_free(d->vchan_reply_buffer);
+    d->vchan_reply_buffer = NULL;
     if (d->vchan) {
         buffer_free(d->vchan_buffer);
         libvchan_close(d->vchan);
