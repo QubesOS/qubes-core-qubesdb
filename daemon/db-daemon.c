@@ -527,8 +527,12 @@ static int mainloop(struct db_daemon_data *d) {
                         d->multiread_requested = 1;
                     }
                 } else {
-                    /* it wasn't connected, domain is probably dead */
-                    break;
+                    /* not connected: the domain is dead (the new vchan is then
+                     * DISCONNECTED), or the VM closed it before syncing */
+                    if (!d->remote_name || !init_vchan(d) ||
+                            libvchan_is_open(d->vchan) == VCHAN_DISCONNECTED)
+                        break;
+                    fprintf(stderr, "reconnecting\n");
                 }
             }
             /* trigger pending data write */
@@ -536,6 +540,16 @@ static int mainloop(struct db_daemon_data *d) {
                 write_vchan_or_client(d, NULL, NULL, 0);
             while (libvchan_data_ready(d->vchan)) {
                 int handle_ret = handle_vchan_data(d);
+                if (!handle_ret && d->remote_name) {
+                    /* bad data from the VM: drop the connection and wait for
+                     * the VM to reconnect and re-sync */
+                    fprintf(stderr, "vchan data processing failed, reconnecting\n");
+                    if (!init_vchan(d)) {
+                        fprintf(stderr, "vchan reconnection failed\n");
+                        return 0;
+                    }
+                    break;
+                }
                 if (!handle_ret) {
                     fprintf(stderr, "FATAL: vchan data processing failed\n");
                     exit(1);
@@ -691,8 +705,8 @@ static int init_server_socket(struct db_daemon_data *d) {
 #endif /* !_WIN32 */
 
 int init_vchan(struct db_daemon_data *d) {
+    buffer_free(d->vchan_buffer);
     if (d->vchan) {
-        buffer_free(d->vchan_buffer);
         libvchan_close(d->vchan);
         d->vchan = NULL;
     }
