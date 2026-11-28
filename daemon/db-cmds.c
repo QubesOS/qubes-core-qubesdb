@@ -685,7 +685,8 @@ static int handle_vchan_multiread_resp(struct db_daemon_data *d, struct qdb_hdr 
 /** Handle new vchan command. This functions is called every time when any new
  * vchan command is detected (but not yet read). It receives data from other
  * vchan peer, carefully verify its contents and call appropriate handle
- * function. Any error in processing vchan data should be considered fatal.
+ * function. On error, the VM daemon exits and the dom0 daemon drops the
+ * vchan connection.
  * @param d Daemon global data
  * @return 1 on success (message handled and responded), 0 if error
  *           occured and client should be disconnected, 2 if message not yet
