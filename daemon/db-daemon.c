@@ -981,6 +981,8 @@ int fuzz_main(int argc, char **argv) {
 
     /* setup graceful shutdown handling */
     signal(SIGTERM, sigterm_handler);
+    /* a client that closed early must not kill the daemon */
+    signal(SIGPIPE, SIG_IGN);
 #endif
 
 #ifndef _WIN32
